@@ -19,7 +19,7 @@ Unfortunately, group and screen results are not transferable between RCH and RMH
 - Sending a sample for group and screen after the patient is checked in at RMH and has an RMH UR number
 - Using O negative un-crossmatched blood
 
-See [information on transporting blood]({{< relref "/articles/blood-transport/index.md" >}}) for information on using RCH blood offsite
+See [information on transporting blood]({{< ref "/articles/blood-transport/index.md" >}}) for information on using RCH blood offsite
 
 ## Ordering and sending group and screen samples at RMH
 
