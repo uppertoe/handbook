@@ -27,7 +27,7 @@
 [[main]]
   name = "Royal Melbourne"
   parent = "Offsite Anaesthesia"
-  pageRef = "rmh"
+  pageRef = "royal-melbourne-hospital"
   weight = 10
 
 [[main]]
