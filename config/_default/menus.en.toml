@@ -16,9 +16,14 @@
   weight = 5
 
 [[main]]
-  name = "Articles"
+  name = "All Articles"
   pageRef = "articles"
   weight = 10
+
+[[main]]
+  name = "Specialties"
+  pageRef = "specialties"
+  weight = 15
 
 [[main]]
   name = "Offsite Anaesthesia"
@@ -27,13 +32,13 @@
 [[main]]
   name = "Royal Melbourne"
   parent = "Offsite Anaesthesia"
-  pageRef = "royal-melbourne-hospital"
+  pageRef = "hospitals/royal-melbourne-hospital"
   weight = 10
 
 [[main]]
   name = "Peter Mac"
   parent = "Offsite Anaesthesia"
-  pageRef = "peter-mac"
+  pageRef = "hospitals/peter-mac"
   weight = 20
 
 #[[main]]
@@ -68,11 +73,6 @@
 #  pageRef = "categories"
 #  weight = 20
 
-#[[main]]
-#  name = "Tags"
-#  pageRef = "tags"
-#  weight = 30
-
 
 # -- Footer Menu --
 # The footer menu is displayed at the bottom of the page, just before
@@ -83,8 +83,3 @@
   name = "Tags"
   pageRef = "tags"
   weight = 10
-
-[[footer]]
-  name = "Categories"
-  pageRef = "categories"
-  weight = 20

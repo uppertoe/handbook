@@ -24,9 +24,10 @@ enableEmoji = true
 
 [taxonomies]
   tag = "tags"
-  category = "categories"
   author = "authors"
   series = "series"
+  specialty = "specialties"
+  hospital = "hospitals"
 
 [sitemap]
   changefreq = 'daily'

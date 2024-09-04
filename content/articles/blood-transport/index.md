@@ -2,7 +2,7 @@
 title = 'Blood Transport'
 date = 2024-08-21T12:43:41+10:00
 draft = false
-tags = ['blood', 'logistics']
+tags = ['blood', 'logistics', 'offsite anaesthesia']
 +++
 It can be convenient to transport crossmatched blood from RCH with the patient, in anticipation of blood loss during a procedure offsite.
 

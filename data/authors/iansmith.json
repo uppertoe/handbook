@@ -1,0 +1,8 @@
+{
+    "name": "Ian Smith",
+    "image": "",
+    "bio": "Consultant Anaesthetist",
+    "social": [
+        {"email": "mailto:ian.smith@rch.org.au"}
+    ]
+}

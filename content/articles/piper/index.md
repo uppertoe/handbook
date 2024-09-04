@@ -3,6 +3,8 @@ title = 'PIPER'
 date = 2024-08-21T16:21:20+10:00
 draft = false
 tags = ['retrieval', 'offsite anaesthesia']
+hospitals = ['royal melbourne hospital', 'peter mac']
+authors = ['eamonnupperton']
 +++
 The Paediatric Infant Perinatal Emergency Retrieval is designed for urgent stabilisation and retrieval of patients across Victoria. We are fortunate that they are able to extend their services to the transport of RCH patients between hospitals when treatment availability necessitates this.
 
