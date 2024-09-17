@@ -1,7 +1,7 @@
 +++
 title = 'Clot Retrieval Timeline'
 date = 2024-09-04T15:36:40+10:00
-draft = true
+draft = false
 hospitals = ['royal melbourne hospital']
 tags = ['emergency', 'logistics']
 specialties = ['neurointerventional']
@@ -28,7 +28,6 @@ The RCH neurology fellow will ensure that the ECR case is booked, which is then 
 
 {{< timelineItem header="Transport to RMH" >}}
 The PIPER registrar + nurse meet the stroke team at medical imaging, and transport the patient to the PIPER ambulance via ED.
-<br><br>
 <ul>
 <li>Either the anaesthetist or the PIPER registrar may transport the patient with the PIPER nurse</li>
 <li>The anaesthesia technician may need to travel separately, depending on seat availability in the PIPER ambulance</li>
@@ -37,7 +36,14 @@ The PIPER registrar + nurse meet the stroke team at medical imaging, and transpo
 {{</ timelineItem>}}
 
 {{< timelineItem header="Arrival at RMH" >}}
+The patient will need to be checked in at the RMH Emergency Department to obtain a UR number and nameband.
+<ul>
+<li>The stroke team will then be escorted by security to the angiography suite on level 1</li>
+<li>If the anaesthesia technician has travelled separately from the stroke team, they will also need to present to ED and be escorted to the angiography suite. The PIPER nurse can assist with airway management in the meantime</li>
+</ul>
+{{</ timelineItem >}}
 
+{{< timelineItem header="Intraprocedure" >}}
 {{</ timelineItem >}}
 
 {{< timelineItem icon="mug-hot" header="Return to RCH">}}

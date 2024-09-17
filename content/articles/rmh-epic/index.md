@@ -3,7 +3,9 @@ title = 'Epic at RMH'
 date = 2024-08-21T15:26:51+10:00
 draft = false
 tags = ['medical record', 'logistics', 'EMR']
-categories = ['royal melbourne hospital']
+hospitals = ['royal melbourne hospital']
+series = ['Code Stroke']
+series_order = 3
 +++
 ## Finding your patient on Epic
 When the patient has been admitted to the RMH system, they will no longer be visible to RCH anaesthetists by the usual means. The best way of accessing the patient's chart on Epic is via 'Patient Station':
