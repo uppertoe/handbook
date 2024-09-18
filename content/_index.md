@@ -9,3 +9,12 @@ You will find telephone numbers, advice on using the EMR, and suggestions for ma
 {{< alert >}}
 **Please note!** All articles in this handbook are presented as a guide only. They are designed to help RCH anaesthetists navigate logistical issues in their work, and do not represent RCH policy.
 {{< /alert >}}
+
+<hr>
+
+## Quick links:
+<p>
+{{< button href="/series/code-stroke/">}}
+Code Stroke
+{{</ button >}}
+</p>

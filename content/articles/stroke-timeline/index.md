@@ -7,6 +7,7 @@ tags = ['emergency', 'logistics']
 specialties = ['neurointerventional']
 series = ['Code Stroke']
 series_order = 2
+authors = ['eamonnupperton']
 +++
 A number of steps need to occur to ensure that the patient is available on the RMH EMR during a clot retrieval case. The following is a brief outline; please refer to the [endovascular clot retrieval guideline]("https://www.rch.org.au/clinicalguide/guideline_index/stroke/") for more detail.
 
@@ -44,6 +45,13 @@ The patient will need to be checked in at the RMH Emergency Department to obtain
 {{</ timelineItem >}}
 
 {{< timelineItem header="Intraprocedure" >}}
+Once contacted, the RMH anaesthesia team will assist by providing an anaesthesia machine and drug trolley to the interventional radiology suite.
+{{</ timelineItem >}}
+
+{{< timelineItem header="Post procedure" >}}
+PIPER and PICU require 45 minutes notice for repatriation back to RCH. On arrival, they will require security escort from ED to interventional radiology and back again.
+<br><br>
+The recommended workflow is to keep the patient intubated and sedated for transfer back to RCH.
 {{</ timelineItem >}}
 
 {{< timelineItem icon="mug-hot" header="Return to RCH">}}

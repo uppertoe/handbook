@@ -8,6 +8,7 @@ specialties = ['neurointerventional']
 series = ['Code Stroke']
 series_order = 1
 weight = 1
+authors = ['eamonnupperton']
 +++
 This document is designed to assist anaesthetists with managing a code stroke at RCH. It is intended as a supplement to the RCH code stroke protocol, but should not be used for decision-making.
 
