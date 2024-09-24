@@ -64,7 +64,7 @@ jobs:
             {
               "GH_CLIENT_ID": "${{ secrets.GH_CLIENT_ID }}",
               "GH_CLIENT_SECRET": "${{ secrets.GH_CLIENT_SECRET }}",
-              "AUTH_SERVER_URL": "${{ secrets.AUTH_SERVER_URL }}"
+              "AUTH_SERVER_URL": "https://icy-island-0043e4700.5.azurestaticapps.net"
             }
 
   close_pull_request_job:
