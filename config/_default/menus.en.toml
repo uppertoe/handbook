@@ -83,3 +83,8 @@
   name = "Tags"
   pageRef = "tags"
   weight = 10
+
+[[footer]]
+  name = "Series"
+  pageRef = "series"
+  weight = 20

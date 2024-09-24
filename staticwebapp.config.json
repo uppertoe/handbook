@@ -1,0 +1,18 @@
+{
+    "routes": [
+      {
+        "route": "/admin/*",
+        "allowedRoles": ["anonymous"]
+      },
+      {
+        "route": "/api/*",
+        "allowedRoles": ["anonymous"]
+      }
+    ],
+    "globalHeaders": {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    }
+  }
+  

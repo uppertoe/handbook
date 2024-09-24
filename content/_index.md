@@ -14,7 +14,7 @@ You will find telephone numbers, advice on using the EMR, and suggestions for ma
 
 ## Quick links:
 <p>
-{{< button href="/series/code-stroke/">}}
+{{< button href="/articles/code-stroke/">}}
 Code Stroke
 {{</ button >}}
 </p>

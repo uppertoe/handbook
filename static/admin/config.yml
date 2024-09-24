@@ -1,0 +1,61 @@
+backend:
+  name: github
+  repo: uppertoe/handbook
+  branch: main
+  base_url: /api
+  auth_endpoint: auth
+  auth_token_endpoint: callback
+  app_id: Ov23liOE04rFJoamfRUE
+
+media_folder: "static/images/uploads"
+public_folder: "/images/uploads"
+
+collections:
+  - name: "articles"
+    label: "Articles"
+    folder: "content/articles"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Publish Date", name: "date", widget: "datetime" }
+      - { label: "Draft", name: "draft", widget: "boolean", default: false }
+      - { label: "Hospitals", name: "hospitals", widget: "list", field: { label: "Hospital", name: "hospital", widget: "string" } }
+      - { label: "Tags", name: "tags", widget: "list", field: { label: "Tag", name: "tag", widget: "string" } }
+      - {
+          label: "Authors", 
+          name: "authors", 
+          widget: "relation", 
+          collection: "authors", 
+          value_field: "file", 
+          search_fields: ["name"], 
+          display_fields: ["name"], 
+          multiple: true
+        }
+      - { label: "Series", name: "series", widget: "list", field: { label: "Series", name: "series", widget: "string" } }
+      - { label: "Series Order", name: "series_order", widget: "number" }
+
+  - name: "authors"
+    label: "Authors"
+    folder: "data/authors"
+    create: true
+    slug: "{{slug}}"
+    format: "json"
+    fields:
+      - { label: "Name", name: "name", widget: "string" }
+      - { label: "Image", name: "image", widget: "image" }
+      - { label: "Bio", name: "bio", widget: "text" }
+      - {
+          label: "Social",
+          name: "social",
+          widget: "list",
+          field: {
+            label: "Email",
+            name: "email",
+            widget: "string",
+            pattern: [
+              "^mailto:.+@.+\\..+$",  # Regex pattern to match 'mailto:' format
+              "Email must be in the form 'mailto:email@example.com'"
+            ]
+          }
+        }
