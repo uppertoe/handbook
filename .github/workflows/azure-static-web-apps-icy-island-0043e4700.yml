@@ -43,10 +43,6 @@ jobs:
           sudo mv hugo /usr/local/bin/
           hugo version
 
-      - name: Replace Client ID in Decap CMS config
-        run: |
-          sed -i "s/'YOUR_GITHUB_CLIENT_ID'/'${{ secrets.GH_CLIENT_ID }}'/g" static/admin/config.yml
-
       - name: Build Hugo site
         run: hugo --minify
 
