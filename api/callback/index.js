@@ -2,19 +2,27 @@ const axios = require('axios');
 
 module.exports = async function (context, req) {
   const code = req.query.code;
-  const client_id = process.env.GITHUB_CLIENT_ID;
-  const client_secret = process.env.GITHUB_CLIENT_SECRET;
+  const client_id = process.env.GH_CLIENT_ID;
+  const client_secret = process.env.GH_CLIENT_SECRET;
 
   if (!code) {
     context.res = {
       status: 400,
-      body: 'Missing code in the request'
+      body: 'Missing code parameter.'
+    };
+    return;
+  }
+
+  if (!client_id || !client_secret) {
+    context.res = {
+      status: 500,
+      body: 'Server configuration error.'
     };
     return;
   }
 
   try {
-    const response = await axios.post(
+    const tokenResponse = await axios.post(
       'https://github.com/login/oauth/access_token',
       {
         client_id,
@@ -26,12 +34,12 @@ module.exports = async function (context, req) {
       }
     );
 
-    const accessToken = response.data.access_token;
+    const accessToken = tokenResponse.data.access_token;
 
     if (!accessToken) {
       context.res = {
         status: 500,
-        body: 'Failed to retrieve access token'
+        body: 'Failed to retrieve access token.'
       };
       return;
     }
@@ -49,10 +57,10 @@ module.exports = async function (context, req) {
       `
     };
   } catch (error) {
-    context.log(error);
+    context.log('Error exchanging code for token:', error);
     context.res = {
       status: 500,
-      body: 'Authentication failed'
+      body: 'Authentication failed.'
     };
   }
 };

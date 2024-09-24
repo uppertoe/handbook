@@ -64,6 +64,10 @@ jobs:
           app_location: "public" # Built app content directory
           api_location: "api" # Azure Functions source code path
           skip_app_build: true
+          env: |
+            GH_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
+            GH_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}
+            AUTH_SERVER_URL=${{ secrets.AUTH_SERVER_URL }}
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
