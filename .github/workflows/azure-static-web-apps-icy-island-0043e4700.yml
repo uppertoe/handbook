@@ -56,7 +56,7 @@ jobs:
           app_location: "public" # Built app content directory
           api_location: "api"    # Azure Functions source code path
           skip_app_build: true
-          config_file_location: "staticwebapp.config.json"   # Point to the root directory where staticwebapp.config.json is located
+          config_file_location: "/"   # Point to the root directory where staticwebapp.config.json is located
           app_settings: |
             {
               "GH_CLIENT_ID": "${{ secrets.GH_CLIENT_ID }}",
