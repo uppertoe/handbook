@@ -50,11 +50,18 @@ module.exports = async function (context, req) {
         'Content-Type': 'text/html'
       },
       body: `
-        <script>
+      <script>
+        console.log('Access token:', '${accessToken}');
+        console.log('window.opener is', window.opener ? 'available' : 'null or undefined');
+  
+        if (window.opener) {
           window.opener.postMessage({ token: '${accessToken}' }, '*');
           window.close();
-        </script>
-      `
+        } else {
+          alert('Unable to communicate with the main window.');
+        }
+      </script>
+    `,
     };
   } catch (error) {
     context.log('Error exchanging code for token:', error);
