@@ -5,7 +5,7 @@ backend:
   base_url: /api
   auth_endpoint: auth
   auth_token_endpoint: callback
-  app_id: Ov23liOE04rFJoamfRUE
+  app_id: 'YOUR_GITHUB_CLIENT_ID'
 
 media_folder: "static/images/uploads"
 public_folder: "/images/uploads"
