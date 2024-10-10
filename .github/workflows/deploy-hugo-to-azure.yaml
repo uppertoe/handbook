@@ -90,8 +90,15 @@ jobs:
       - name: Extract Kudu Credentials
         id: extract_kudu
         run: |
+          # Extract the MSDeploy profile details using xmlstarlet
           USERNAME=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userName" publishProfile.xml)
           PASSWORD=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userPWD" publishProfile.xml)
+
+          # Validate extraction
+          if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
+            echo "Failed to extract Kudu credentials."
+            exit 1
+          fi
 
           # Define the Kudu API URL targeting the 'public' folder
           KUDU_API_URL="https://${{ secrets.AZURE_APP_NAME }}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/"
