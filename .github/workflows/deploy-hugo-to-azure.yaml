@@ -1,94 +1,123 @@
 name: Build and Deploy Hugo to Azure WebApp
 
-# Trigger the workflow on push to the main branch
 on:
   push:
     branches:
       - main  # Change to your default branch if different
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+concurrency:
+  group: "deploy-azure-webapp"
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  # Build Job
+  build:
     runs-on: ubuntu-latest
-
+    env:
+      HUGO_VERSION: 0.128.0
     steps:
-    # 1. Checkout the repository
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Install Hugo CLI
+        run: |
+          wget -O ${{ runner.temp }}/hugo.deb https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb
+          sudo dpkg -i ${{ runner.temp }}/hugo.deb
+      - name: Install Dart Sass
+        run: sudo snap install dart-sass
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Install Node.js Dependencies
+        run: |
+          [[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true
+      - name: Build with Hugo
+        env:
+          HUGO_CACHEDIR: ${{ runner.temp }}/hugo_cache
+          HUGO_ENVIRONMENT: production
+          TZ: America/Los_Angeles
+        run: |
+          hugo \
+            --gc \
+            --minify \
+            --baseURL "${{ steps.pages.outputs.base_url }}/"
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
 
-    # 2. Setup Hugo
-    - name: Setup Hugo
-      uses: peaceiris/actions-hugo@v2
-      with:
-        hugo-version: 'latest'  # Specify a version if needed
+  # Deploy Job
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact
+        uses: actions/download-pages-artifact@v3
+        with:
+          name: public
+          path: ./public
 
-    # 3. Build the Hugo site
-    - name: Build Hugo Site
-      run: hugo -D  # The '-D' flag includes draft content
+      - name: Install Azure CLI and xmlstarlet
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xmlstarlet
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
-    # 4. Install Azure CLI and xmlstarlet (for XML parsing)
-    - name: Install Azure CLI and xmlstarlet
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y xmlstarlet
-        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
 
-    # 5. Login to Azure using the service principal
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      - name: Get Publishing Profile
+        id: publish_profile
+        run: |
+          az webapp deployment list-publishing-profiles \
+            --name ${{ secrets.AZURE_APP_NAME }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --xml > publishProfile.xml
 
-    # 6. Retrieve the publishing profile of the WebApp
-    - name: Get Publishing Profile
-      id: publish_profile
-      run: |
-        az webapp deployment list-publishing-profiles \
-          --name ${{ secrets.AZURE_APP_NAME }} \
-          --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --xml > publishProfile.xml
+      - name: Extract Kudu Credentials
+        id: extract_kudu
+        run: |
+          USERNAME=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userName" publishProfile.xml)
+          PASSWORD=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userPWD" publishProfile.xml)
 
-    # 7. Extract Kudu (SCM) credentials from the publishing profile
-    - name: Extract Kudu Credentials
-      id: extract_kudu
-      run: |
-        # Extract the MSDeploy profile details using xmlstarlet
-        USERNAME=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userName" publishProfile.xml)
-        PASSWORD=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userPWD" publishProfile.xml)
+          # Define the Kudu API URL targeting the 'public' folder
+          KUDU_API_URL="https://${{ secrets.AZURE_APP_NAME }}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/"
 
-        # Define the Kudu API URL targeting the 'public' folder
-        KUDU_API_URL="https://${{ secrets.AZURE_APP_NAME }}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/"
+          # Output the variables for use in subsequent steps
+          echo "KUDU_API_URL=${KUDU_API_URL}" >> $GITHUB_OUTPUT
+          echo "USERNAME=${USERNAME}" >> $GITHUB_OUTPUT
+          echo "PASSWORD=${PASSWORD}" >> $GITHUB_OUTPUT
 
-        # Output the variables for use in subsequent steps
-        echo "KUDU_API_URL=${KUDU_API_URL}" >> $GITHUB_OUTPUT
-        echo "USERNAME=${USERNAME}" >> $GITHUB_OUTPUT
-        echo "PASSWORD=${PASSWORD}" >> $GITHUB_OUTPUT
+      - name: Delete Existing Public Folder
+        run: |
+          echo "Deleting existing 'public/' folder in Azure WebApp..."
+          curl -X DELETE -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" "${{ steps.extract_kudu.outputs.KUDU_API_URL }}"
 
-    # 8. Delete the existing 'public/' folder in Azure WebApp
-    - name: Delete Existing Public Folder
-      run: |
-        echo "Deleting existing 'public/' folder in Azure WebApp..."
-        curl -X DELETE -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" "${{ steps.extract_kudu.outputs.KUDU_API_URL }}"
+      - name: Upload New Public Folder
+        run: |
+          echo "Uploading new 'public/' folder to Azure WebApp..."
 
-    # 9. Upload the new 'public/' folder to Azure WebApp
-    - name: Upload New Public Folder
-      run: |
-        echo "Uploading new 'public/' folder to Azure WebApp..."
+          # Zip the public/ folder
+          cd public
+          zip -r ../public.zip ./*
+          cd ..
 
-        # Navigate to the 'public' directory and zip its contents
-        cd public
-        zip -r ../public.zip ./*
-        cd ..
+          # Upload the zipped 'public/' folder via Kudu's Zip API
+          curl -X PUT -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @public.zip \
+            "${{ steps.extract_kudu.outputs.KUDU_API_URL }}"
 
-        # Upload the zipped 'public/' folder via Kudu's Zip API
-        curl -X PUT -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" \
-          -H "Content-Type: application/zip" \
-          --data-binary @public.zip \
-          "${{ steps.extract_kudu.outputs.KUDU_API_URL }}"
-
-    # 10. Cleanup temporary files
-    - name: Cleanup
-      run: |
-        rm publishProfile.xml
-        rm public.zip
+      - name: Cleanup
+        run: |
+          rm publishProfile.xml
+          rm public.zip
