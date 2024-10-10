@@ -76,7 +76,7 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-  # Deploy Job
+    # Deploy Job
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -98,23 +98,42 @@ jobs:
           unzip -l ./deploy/deploy.zip
           ls -lh ./deploy/deploy.zip
 
-      - name: Deploy New Public Folder Using ZipDeploy
+      - name: Remove Existing Files in /home/site/wwwroot/public
         env:
           AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
           AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
           AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
         run: |
-          echo "Uploading new 'public/' folder using ZipDeploy..."
-          response=$(curl -w "%{http_code}" -o response.txt -X POST -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
-            --data-binary @./deploy/deploy.zip \
-            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/zipdeploy")
-          cat response.txt
-          if [ "$response" -ne 200 ] && [ "$response" -ne 201 ]; then
-            echo "ZipDeploy failed with status code: $response"
-            cat response.txt
+          echo "Deleting existing files in /home/site/wwwroot/public..."
+          response=$(curl -s -w "%{http_code}" -X DELETE -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public?recursive=true")
+          http_code=$(echo "$response" | tail -n1)
+          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 204 ]; then
+            echo "Failed to delete existing files with status code: $http_code"
             exit 1
           fi
-          echo "New 'public/' folder deployed successfully via ZipDeploy."
+          echo "Existing files deleted successfully."
+
+      - name: Deploy New Public Folder to /home/site/wwwroot/public
+        env:
+          AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
+          AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
+          AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+        run: |
+          echo "Deploying new 'public/' folder to /home/site/wwwroot/public..."
+          # Define the deployment path
+          DEPLOYMENT_PATH="/site/wwwroot/public"
+          # Upload and unzip the deploy.zip to the deployment path
+          response=$(curl -s -w "%{http_code}" -X PUT -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+            --header "Content-Type: application/zip" \
+            --data-binary @./deploy/deploy.zip \
+            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/zip${DEPLOYMENT_PATH}")
+          http_code=$(echo "$response" | tail -n1)
+          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 201 ]; then
+            echo "Deployment failed with status code: $http_code"
+            exit 1
+          fi
+          echo "New 'public/' folder deployed successfully to ${DEPLOYMENT_PATH}."
 
       - name: Cleanup
         run: |
