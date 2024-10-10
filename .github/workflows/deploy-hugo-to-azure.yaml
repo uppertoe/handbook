@@ -105,10 +105,9 @@ jobs:
           AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
         run: |
           echo "Deleting existing files in /home/site/wwwroot/public..."
-          response=$(curl -s -w "%{http_code}" -X DELETE -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+          http_code=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
             "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public?recursive=true")
-          http_code=$(echo "$response" | tail -n1)
-          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 204 ]; then
+          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 204 ] && [ "$http_code" -ne 404 ]; then
             echo "Failed to delete existing files with status code: $http_code"
             exit 1
           fi
@@ -124,13 +123,14 @@ jobs:
           # Define the deployment path
           DEPLOYMENT_PATH="/site/wwwroot/public"
           # Upload and unzip the deploy.zip to the deployment path
-          response=$(curl -s -w "%{http_code}" -X PUT -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+          http_code=$(curl -sS -o response.txt -w "%{http_code}" -X PUT -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
             --header "Content-Type: application/zip" \
             --data-binary @./deploy/deploy.zip \
             "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/zip${DEPLOYMENT_PATH}")
-          http_code=$(echo "$response" | tail -n1)
           if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 201 ]; then
             echo "Deployment failed with status code: $http_code"
+            echo "Response content:"
+            cat response.txt
             exit 1
           fi
           echo "New 'public/' folder deployed successfully to ${DEPLOYMENT_PATH}."
