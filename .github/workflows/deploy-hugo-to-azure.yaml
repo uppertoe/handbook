@@ -22,8 +22,10 @@ jobs:
     env:
       HUGO_VERSION: 0.128.0  # Specify your desired Hugo version
     steps:
-      - name: Install xmllint
-        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip
 
       - name: Install Hugo CLI
         run: |
@@ -52,11 +54,21 @@ jobs:
           hugo \
             --gc \
             --minify \
-            --baseURL "${{ steps.pages.outputs.base_url }}/"  # Updated baseURL
+            --baseURL "https://your-site-url/"  # Replace with your actual base URL
 
       - name: Zip Public Folder
         run: |
-          zip -r deploy.zip public/  # Zips the 'public/' folder itself
+          cd public
+          zip -r ../deploy.zip .  # Zips the contents of 'public/' into 'deploy.zip'
+
+      - name: Verify deploy.zip Contents
+        run: |
+          echo "Contents of deploy.zip:"
+          unzip -l ./deploy.zip
+
+      - name: Check deploy.zip Size
+        run: |
+          ls -lh ./deploy.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
@@ -69,38 +81,41 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Install xmllint
-        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
 
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
           name: deploy
-          path: ./deploy.zip
+          path: ./deploy
 
-      - name: Delete Existing Public Folder Contents
+      - name: Verify Downloaded deploy.zip
+        run: |
+          echo "Contents of downloaded deploy.zip:"
+          unzip -l ./deploy/deploy.zip
+          ls -lh ./deploy/deploy.zip
+
+      - name: Deploy New Public Folder Using ZipDeploy
         env:
           AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
           AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
           AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
         run: |
-          echo "Deleting existing 'public/' folder contents..."
-          curl -X DELETE -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/" -H "Content-Type: application/json"
-          echo "Existing 'public/' folder contents deleted."
-
-      - name: Deploy New Public Folder
-        env:
-          AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
-          AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
-          AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
-        run: |
-          echo "Uploading new 'public/' folder..."
-          curl -X PUT -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
-            -H "Content-Type: application/zip" \
-            --data-binary @deploy.zip \
-            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/deploy.zip"
-          echo "New 'public/' folder deployed successfully."
+          echo "Uploading new 'public/' folder using ZipDeploy..."
+          response=$(curl -w "%{http_code}" -o response.txt -X POST -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+            --data-binary @./deploy/deploy.zip \
+            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/zipdeploy")
+          cat response.txt
+          if [ "$response" -ne 200 ] && [ "$response" -ne 201 ]; then
+            echo "ZipDeploy failed with status code: $response"
+            cat response.txt
+            exit 1
+          fi
+          echo "New 'public/' folder deployed successfully via ZipDeploy."
 
       - name: Cleanup
         run: |
-          rm deploy.zip
+          rm -rf deploy
