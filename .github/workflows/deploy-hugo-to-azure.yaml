@@ -52,7 +52,7 @@ jobs:
           hugo \
             --gc \
             --minify \
-            --baseURL "https://your-site-url/"  # Replace with your actual base URL
+            --baseURL "${{ steps.pages.outputs.base_url }}/"  # Updated baseURL
 
       - name: Zip Public Folder
         run: |
@@ -81,7 +81,11 @@ jobs:
       - name: Extract Publish Profile Credentials
         id: extract_publish_profile
         run: |
-          echo "${{ secrets.AZURE_PUBLISH_PROFILE }}" > publishProfile.xml
+          printf '%s' "${{ secrets.AZURE_PUBLISH_PROFILE }}" > publishProfile.xml
+
+      - name: Validate Publish Profile XML
+        run: |
+          xmllint --noout publishProfile.xml
 
       - name: Parse Publish Profile for Kudu Credentials
         id: parse_publish_profile
