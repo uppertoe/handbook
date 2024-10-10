@@ -54,7 +54,7 @@ jobs:
           hugo \
             --gc \
             --minify \
-            --baseURL "https://your-site-url/"  # Replace with your actual base URL
+            --baseURL "${{ steps.pages.outputs.base_url }}/"  
 
       - name: Zip Public Folder
         run: |
