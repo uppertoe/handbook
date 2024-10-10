@@ -20,7 +20,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      HUGO_VERSION: 0.128.0
+      HUGO_VERSION: 0.128.0  # Specify your desired Hugo version
     steps:
       - name: Install Hugo CLI
         run: |
@@ -51,11 +51,15 @@ jobs:
             --minify \
             --baseURL "https://your-site-url/"  # Replace with your actual base URL
 
+      - name: Zip Public Folder
+        run: |
+          zip -r deploy.zip public/  # Zips the 'public/' folder itself
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: public
-          path: ./public
+          name: deploy
+          path: ./deploy.zip
 
   # Deploy Job
   deploy:
@@ -65,79 +69,40 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: public
-          path: ./public
+          name: deploy
+          path: ./deploy.zip
 
-      - name: Install Azure CLI and xmlstarlet
+      - name: Extract Publish Profile Credentials
+        id: extract_publish_profile
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xmlstarlet
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          echo "${{ secrets.AZURE_PUBLISH_PROFILE }}" > publishProfile.xml
 
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Get Publishing Profile
-        id: publish_profile
+      - name: Parse Publish Profile for Kudu Credentials
+        id: parse_publish_profile
         run: |
-          az webapp deployment list-publishing-profiles \
-            --name ${{ secrets.AZURE_APP_NAME }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --xml > publishProfile.xml
-
-      - name: Extract Kudu Credentials
-        id: extract_kudu
-        run: |
-          # Extract the MSDeploy profile details using xmlstarlet
-          USERNAME=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userName" publishProfile.xml)
-          PASSWORD=$(xmlstarlet sel -t -v "//publishProfile[@publishMethod='MSDeploy']/userPWD" publishProfile.xml)
-
-          # Validate extraction
-          if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
-            echo "Failed to extract Kudu credentials."
-            exit 1
-          fi
-
-          # Define the Kudu API URL targeting the 'public' folder
+          USERNAME=$(xmllint --xpath "string(//publishProfile[@publishMethod='MSDeploy']/userName)" publishProfile.xml)
+          PASSWORD=$(xmllint --xpath "string(//publishProfile[@publishMethod='MSDeploy']/userPWD)" publishProfile.xml)
           KUDU_API_URL="https://${{ secrets.AZURE_APP_NAME }}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/"
 
-          # Output the variables for use in subsequent steps
           echo "KUDU_API_URL=${KUDU_API_URL}" >> $GITHUB_OUTPUT
           echo "USERNAME=${USERNAME}" >> $GITHUB_OUTPUT
           echo "PASSWORD=${PASSWORD}" >> $GITHUB_OUTPUT
 
-      - name: Delete Existing Public Folder
+      - name: Delete Existing Public Folder Contents
         run: |
-          echo "Deleting existing 'public/' folder in Azure WebApp..."
-          response=$(curl -X DELETE -s -w "%{http_code}" -o /dev/null -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" "${{ steps.extract_kudu.outputs.KUDU_API_URL }}")
-          if [[ "$response" != "200" && "$response" != "204" ]]; then
-            echo "Failed to delete 'public/' folder. HTTP Status: $response"
-            exit 1
-          fi
+          echo "Deleting existing 'public/' folder contents..."
+          curl -X DELETE -u "${{ steps.parse_publish_profile.outputs.USERNAME }}:${{ steps.parse_publish_profile.outputs.PASSWORD }}" "${{ steps.parse_publish_profile.outputs.KUDU_API_URL }}" -H "Content-Type: application/json"
+          echo "Existing 'public/' folder contents deleted."
 
-      - name: Upload New Public Folder
+      - name: Deploy New Public Folder
         run: |
-          echo "Uploading new 'public/' folder to Azure WebApp..."
-
-          # Zip the public/ folder
-          cd public
-          zip -r ../public.zip ./*
-          cd ..
-
-          # Upload the zipped 'public/' folder via Kudu's Zip API
-          response=$(curl -X PUT -s -w "%{http_code}" -o /dev/null -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" \
+          echo "Uploading new 'public/' folder..."
+          curl -X PUT -u "${{ steps.parse_publish_profile.outputs.USERNAME }}:${{ steps.parse_publish_profile.outputs.PASSWORD }}" \
             -H "Content-Type: application/zip" \
-            --data-binary @public.zip \
-            "${{ steps.extract_kudu.outputs.KUDU_API_URL }}")
-
-          if [[ "$response" != "200" && "$response" != "201" && "$response" != "204" ]]; then
-            echo "Failed to upload 'public/' folder. HTTP Status: $response"
-            exit 1
-          fi
+            --data-binary @deploy.zip \
+            "${{ steps.parse_publish_profile.outputs.KUDU_API_URL }}"
+          echo "New 'public/' folder deployed successfully."
 
       - name: Cleanup
         run: |
-          rm publishProfile.xml
-          rm public.zip
+          rm publishProfile.xml deploy.zip
