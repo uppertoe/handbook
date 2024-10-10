@@ -75,11 +75,12 @@ jobs:
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       - name: Login to Azure
-        uses: azure/login@v1
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get Publishing Profile
         id: publish_profile
@@ -106,7 +107,11 @@ jobs:
       - name: Delete Existing Public Folder
         run: |
           echo "Deleting existing 'public/' folder in Azure WebApp..."
-          curl -X DELETE -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" "${{ steps.extract_kudu.outputs.KUDU_API_URL }}"
+          response=$(curl -X DELETE -s -w "%{http_code}" -o /dev/null -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" "${{ steps.extract_kudu.outputs.KUDU_API_URL }}")
+          if [[ "$response" != "200" && "$response" != "204" ]]; then
+            echo "Failed to delete 'public/' folder. HTTP Status: $response"
+            exit 1
+          fi
 
       - name: Upload New Public Folder
         run: |
@@ -118,10 +123,15 @@ jobs:
           cd ..
 
           # Upload the zipped 'public/' folder via Kudu's Zip API
-          curl -X PUT -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" \
+          response=$(curl -X PUT -s -w "%{http_code}" -o /dev/null -u "${{ steps.extract_kudu.outputs.USERNAME }}:${{ steps.extract_kudu.outputs.PASSWORD }}" \
             -H "Content-Type: application/zip" \
             --data-binary @public.zip \
-            "${{ steps.extract_kudu.outputs.KUDU_API_URL }}"
+            "${{ steps.extract_kudu.outputs.KUDU_API_URL }}")
+
+          if [[ "$response" != "200" && "$response" != "201" && "$response" != "204" ]]; then
+            echo "Failed to upload 'public/' folder. HTTP Status: $response"
+            exit 1
+          fi
 
       - name: Cleanup
         run: |
