@@ -76,65 +76,81 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-    # Deploy Job
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl
+# Deploy Job
+deploy:
+  needs: build
+  runs-on: ubuntu-latest
+  steps:
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl
 
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: deploy
-          path: ./deploy
+    - name: Download Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: deploy
+        path: ./deploy
 
-      - name: Verify Downloaded deploy.zip
-        run: |
-          echo "Contents of downloaded deploy.zip:"
-          unzip -l ./deploy/deploy.zip
-          ls -lh ./deploy/deploy.zip
+    - name: Verify Downloaded deploy.zip
+      run: |
+        echo "Contents of downloaded deploy.zip:"
+        unzip -l ./deploy/deploy.zip
+        ls -lh ./deploy/deploy.zip
 
-      - name: Remove Existing Files in /home/site/wwwroot/public
-        env:
-          AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
-          AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
-          AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
-        run: |
-          echo "Deleting existing files in /home/site/wwwroot/public..."
-          http_code=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
-            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public?recursive=true")
-          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 204 ] && [ "$http_code" -ne 404 ]; then
-            echo "Failed to delete existing files with status code: $http_code"
-            exit 1
-          fi
-          echo "Existing files deleted successfully."
+    - name: Remove Existing Files in /home/site/wwwroot/public
+      env:
+        AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
+        AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
+        AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+      run: |
+        echo "Deleting existing files in /home/site/wwwroot/public..."
+        http_code=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+          "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public?recursive=true")
+        if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 204 ] && [ "$http_code" -ne 404 ]; then
+          echo "Failed to delete existing files with status code: $http_code"
+          exit 1
+        fi
+        echo "Existing files deleted successfully."
 
-      - name: Deploy New Public Folder to /home/site/wwwroot/public
-        env:
-          AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
-          AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
-          AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
-        run: |
-          echo "Deploying new 'public/' folder to /home/site/wwwroot/public..."
-          # Define the deployment path
-          DEPLOYMENT_PATH="/site/wwwroot/public"
-          # Upload and unzip the deploy.zip to the deployment path
-          http_code=$(curl -sS -o response.txt -w "%{http_code}" -X PUT -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
-            --header "Content-Type: application/zip" \
-            --data-binary @./deploy/deploy.zip \
-            "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/zip${DEPLOYMENT_PATH}")
-          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 201 ]; then
-            echo "Deployment failed with status code: $http_code"
-            echo "Response content:"
-            cat response.txt
-            exit 1
-          fi
-          echo "New 'public/' folder deployed successfully to ${DEPLOYMENT_PATH}."
+    - name: Create /home/site/wwwroot/public Directory
+      env:
+        AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
+        AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
+        AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+      run: |
+        echo "Creating /home/site/wwwroot/public directory..."
+        http_code=$(curl -sS -X PUT -o /dev/null -w "%{http_code}" -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+          -H "Content-Length: 0" \
+          "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/public/")
+        if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 201] && [ "$http_code" -ne 409 ]; then
+          echo "Failed to create directory with status code: $http_code"
+          exit 1
+        fi
+        echo "Directory created successfully."
 
-      - name: Cleanup
-        run: |
-          rm -rf deploy
+    - name: Deploy New Public Folder to /home/site/wwwroot/public
+      env:
+        AZURE_KUDU_USERNAME: ${{ secrets.AZURE_KUDU_USERNAME }}
+        AZURE_KUDU_PASSWORD: ${{ secrets.AZURE_KUDU_PASSWORD }}
+        AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+      run: |
+        echo "Deploying new 'public/' folder to /home/site/wwwroot/public..."
+        # Define the deployment path
+        DEPLOYMENT_PATH="/site/wwwroot/public"
+        # Upload and unzip the deploy.zip to the deployment path
+        http_code=$(curl -sS -o response.txt -w "%{http_code}" -X PUT -u "${AZURE_KUDU_USERNAME}:${AZURE_KUDU_PASSWORD}" \
+          --header "Content-Type: application/zip" \
+          --data-binary @./deploy/deploy.zip \
+          "https://${AZURE_APP_NAME}.scm.azurewebsites.net/api/zip${DEPLOYMENT_PATH}/")
+        if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 201 ]; then
+          echo "Deployment failed with status code: $http_code"
+          echo "Response content:"
+          cat response.txt
+          exit 1
+        fi
+        echo "New 'public/' folder deployed successfully to ${DEPLOYMENT_PATH}."
+
+    - name: Cleanup
+      run: |
+        rm -rf deploy
