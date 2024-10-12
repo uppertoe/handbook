@@ -1,4 +1,4 @@
-name: Build and Deploy Hugo to Azure WebApp
+name: Build and Deploy Hugo to Azure Container App
 
 on:
   push:
@@ -111,7 +111,8 @@ jobs:
           
           # Use azcopy to recursively delete all files in the public directory of the Azure File Share
           azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" \
-            --recursive
+            --recursive \
+            --source-key="${{ env.AZURE_STORAGE_ACCOUNT_KEY }}"
 
       - name: Upload New Public Folder to Azure File Share
         env:
