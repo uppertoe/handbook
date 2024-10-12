@@ -1,0 +1,133 @@
+name: Build and Deploy Hugo to Azure WebApp
+
+on:
+  push:
+    branches:
+      - main  # Change to your default branch if different
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+concurrency:
+  group: "deploy-azure-webapp"
+  cancel-in-progress: false
+
+jobs:
+  # Build Job
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_VERSION: 0.128.0  # Specify your desired Hugo version
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip
+
+      - name: Install Hugo CLI
+        run: |
+          wget -O ${{ runner.temp }}/hugo.deb https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb
+          sudo dpkg -i ${{ runner.temp }}/hugo.deb
+
+      - name: Install Dart Sass
+        run: sudo snap install dart-sass
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Node.js Dependencies
+        run: |
+          [[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true
+
+      - name: Build with Hugo
+        env:
+          HUGO_CACHEDIR: ${{ runner.temp }}/hugo_cache
+          HUGO_ENVIRONMENT: production
+          TZ: America/Los_Angeles
+        run: |
+          hugo \
+            --gc \
+            --minify \
+            --baseURL "${{ steps.pages.outputs.base_url }}/"  
+
+      - name: Zip Public Folder
+        run: |
+          cd public
+          zip -r ../deploy.zip .  # Zips the contents of 'public/' into 'deploy.zip'
+
+      - name: Verify deploy.zip Contents
+        run: |
+          echo "Contents of deploy.zip:"
+          unzip -l ./deploy.zip
+
+      - name: Check deploy.zip Size
+        run: |
+          ls -lh ./deploy.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: deploy
+          path: ./deploy.zip
+
+
+  # Deploy Job
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: deploy
+          path: ./deploy
+
+      - name: Verify Downloaded deploy.zip
+        run: |
+          echo "Contents of downloaded deploy.zip:"
+          unzip -l ./deploy/deploy.zip
+          ls -lh ./deploy/deploy.zip
+
+      - name: Install AzCopy
+        run: |
+          wget https://aka.ms/downloadazcopy-v10-linux -O azcopy.tar.gz
+          tar -xvf azcopy.tar.gz
+          sudo mv ./azcopy_linux_amd64_*/azcopy /usr/local/bin/
+          rm -rf azcopy.tar.gz azcopy_linux_amd64_*
+
+      - name: Delete Old Files in Azure File Share
+        env:
+          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+          AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+        run: |
+          echo "Deleting old files in the Azure File Share public directory..."
+          
+          # Use azcopy to recursively delete all files in the public directory of the Azure File Share
+          azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" \
+            --recursive --include="*"
+
+      - name: Upload New Public Folder to Azure File Share
+        env:
+          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+          AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+        run: |
+          echo "Uploading new 'public/' folder to Azure File Share..."
+          
+          # Extract the deploy.zip and upload its contents to the Azure File Share
+          unzip -o ./deploy/deploy.zip -d ./public
+          
+          # Use azcopy to upload the contents of the public directory to the Azure File Share
+          azcopy copy './public/*' "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" \
+            --recursive --overwrite --source-key="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"
+
+      - name: Cleanup
+        run: |
+          rm -rf deploy public
