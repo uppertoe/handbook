@@ -76,7 +76,6 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-
   # Deploy Job
   deploy:
     needs: build
@@ -101,23 +100,30 @@ jobs:
           sudo mv ./azcopy_linux_amd64_*/azcopy /usr/local/bin/
           rm -rf azcopy.tar.gz azcopy_linux_amd64_*
 
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_SP_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-secret: ${{ secrets.AZURE_SP_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Delete Old Files in Azure File Share
         env:
           AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
           AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
         run: |
           echo "Deleting old files in the Azure File Share public directory..."
           
+          # Authenticate AzCopy with the logged-in Azure session
+          azcopy login --identity
+
           # Use azcopy to recursively delete all files in the public directory of the Azure File Share
-          azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" \
-            --recursive \
-            --source-key="${{ env.AZURE_STORAGE_ACCOUNT_KEY }}"
+          azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
       - name: Upload New Public Folder to Azure File Share
         env:
           AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
           AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
         run: |
           echo "Uploading new 'public/' folder to Azure File Share..."
@@ -125,9 +131,11 @@ jobs:
           # Extract the deploy.zip and upload its contents to the Azure File Share
           unzip -o ./deploy/deploy.zip -d ./public
           
+          # Authenticate AzCopy with the logged-in Azure session
+          azcopy login --identity
+          
           # Use azcopy to upload the contents of the public directory to the Azure File Share
-          azcopy copy './public/*' "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" \
-            --recursive --overwrite --source-key="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"
+          azcopy copy './public/*' "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive --overwrite
 
       - name: Cleanup
         run: |
