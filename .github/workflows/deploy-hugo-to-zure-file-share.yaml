@@ -93,23 +93,20 @@ jobs:
           unzip -l ./deploy/deploy.zip
           ls -lh ./deploy/deploy.zip
 
-      - name: Authenticate to Azure
+      - name: Authenticate, Delete Old Files + Upload Folder in Azure File Share
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
         run: |
           az login --service-principal \
             --username $AZURE_CLIENT_ID \
             --password $AZURE_CLIENT_SECRET \
             --tenant $AZURE_TENANT_ID
 
-      - name: Delete Old Files in Azure File Share
-        env:
-          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
-        run: |
           echo "Deleting old files in the Azure File Share public directory..."
           az storage file delete-batch \
             --account-name $AZURE_STORAGE_ACCOUNT_NAME \
@@ -117,11 +114,6 @@ jobs:
             --auth-mode login \
             --enable-file-backup-request-intent
 
-      - name: Upload New Public Folder to Azure File Share
-        env:
-          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
-        run: |
           echo "Uploading new 'public/' folder to Azure File Share..."
           unzip -o ./deploy/deploy.zip -d ./public
           az storage file upload-batch \
@@ -129,7 +121,7 @@ jobs:
             --destination $AZURE_FILE_SHARE_NAME/public \
             --source ./public \
             --auth-mode login
-
+        
       - name: Cleanup
         run: |
           rm -rf deploy public
