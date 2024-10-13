@@ -120,23 +120,21 @@ jobs:
           echo "Listing storage accounts to verify access..."
           az storage share list --account-name $AZURE_STORAGE_ACCOUNT_NAME --output table
 
-          # Temporarily disable secret masking for the storage account name
-          echo "::add-mask::$AZURE_FILE_SHARE_NAME"
-
           # Delete files
           echo "Deleting old files in the Azure File Share public directory..."
           az storage file delete-batch \
             --account-name $AZURE_STORAGE_ACCOUNT_NAME \
-            --source $AZURE_FILE_SHARE_NAME/public \
+            --source $AZURE_FILE_SHARE_NAME \
             --auth-mode login \
-            --enable-file-backup-request-intent
+            --enable-file-backup-request-intent \
+            --pattern '*'
 
           # Upload files
           echo "Uploading new 'public/' folder to Azure File Share..."
           unzip -o ./deploy/deploy.zip -d ./public
           az storage file upload-batch \
             --account-name $AZURE_STORAGE_ACCOUNT_NAME \
-            --destination $AZURE_FILE_SHARE_NAME/public \
+            --destination $AZURE_FILE_SHARE_NAME \
             --source ./public \
             --auth-mode login
         
