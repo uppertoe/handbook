@@ -76,7 +76,7 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-    # Deploy Job
+  # Deploy Job
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -93,51 +93,40 @@ jobs:
           unzip -l ./deploy/deploy.zip
           ls -lh ./deploy/deploy.zip
 
-      - name: Authenticate, Delete Old Files + Upload Folder in Azure File Share
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+      - name: Authenticate with Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: List Files in Azure File Share (Optional Debug)
         run: |
-          # Azure Login Debug
-          echo "Logging in with service principal..."
-          az login --service-principal \
-            --username $AZURE_CLIENT_ID \
-            --password $AZURE_CLIENT_SECRET \
-            --tenant $AZURE_TENANT_ID
+          echo "Listing files in Azure File Share to verify access..."
+          az storage file list \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --path '' \
+            --output table \
+            --auth-mode login
 
-          echo "Validating Azure login..."
-          az account show
-
-          echo "Client ID: $AZURE_CLIENT_ID"
-          echo "Subscription ID: $AZURE_SUBSCRIPTION_ID"
-          echo "Storage Account: $AZURE_STORAGE_ACCOUNT_NAME"
-          echo "File Share: $AZURE_FILE_SHARE_NAME"
-
-          echo "Listing storage accounts to verify access..."
-          az storage share list --account-name $AZURE_STORAGE_ACCOUNT_NAME --output table
-
-          # Delete files
-          echo "Deleting old files in the Azure File Share public directory..."
+      - name: Delete Old Files in Azure File Share
+        run: |
+          echo "Deleting old files in the Azure File Share..."
           az storage file delete-batch \
-            --account-name $AZURE_STORAGE_ACCOUNT_NAME \
-            --source $AZURE_FILE_SHARE_NAME \
-            --auth-mode login \
-            --enable-file-backup-request-intent \
-            --pattern '*'
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --source ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --pattern '*' \
+            --auth-mode login
 
-          # Upload files
-          echo "Uploading new 'public/' folder to Azure File Share..."
+      - name: Upload New Hugo Site to Azure File Share
+        run: |
+          echo "Uploading new 'public/' folder to Azure File Share root..."
           unzip -o ./deploy/deploy.zip -d ./public
           az storage file upload-batch \
-            --account-name $AZURE_STORAGE_ACCOUNT_NAME \
-            --destination $AZURE_FILE_SHARE_NAME \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --source ./public \
             --auth-mode login
-        
+          
       - name: Cleanup
         run: |
           rm -rf deploy public
