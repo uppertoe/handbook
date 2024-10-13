@@ -76,7 +76,6 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-  # Deploy Job
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -102,29 +101,45 @@ jobs:
       - name: Check or Create temp/ Directory
         run: |
           echo "Checking if temp/ directory exists..."
-          az storage directory exists \
+          EXISTS=$(az storage directory exists \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name temp || \
-          (echo "temp/ directory does not exist, creating it..." && \
-           az storage directory create \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name temp)
+            --name temp \
+            --auth-mode login \
+            --query exists)
+          if [ "$EXISTS" == "false" ]; then
+            echo "temp/ directory does not exist, creating it..."
+            az storage directory create \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+              --name temp \
+              --auth-mode login \
+              --enable-file-backup-request-intent
+          else
+            echo "temp/ directory exists."
+          fi
 
       # Check if public/ directory exists, if not create it
       - name: Check or Create public/ Directory
         run: |
           echo "Checking if public/ directory exists..."
-          az storage directory exists \
+          EXISTS=$(az storage directory exists \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public || \
-          (echo "public/ directory does not exist, creating it..." && \
-           az storage directory create \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public)
+            --name public \
+            --auth-mode login \
+            --query exists)
+          if [ "$EXISTS" == "false" ]; then
+            echo "public/ directory does not exist, creating it..."
+            az storage directory create \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+              --name public \
+              --auth-mode login \
+              --enable-file-backup-request-intent
+          else
+            echo "public/ directory exists."
+          fi
 
       # Upload new site content to temp/ directory
       - name: Upload New Hugo Site to Azure temp/ Directory
@@ -134,7 +149,8 @@ jobs:
           az storage file upload-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
-            --source ./public
+            --source ./public \
+            --auth-mode login
 
       # Delete all files from public/ directory
       - name: Delete Old Files in Azure public/ Directory
@@ -144,6 +160,7 @@ jobs:
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
             --pattern '*' \
+            --auth-mode login \
             --enable-file-backup-request-intent
 
       # Delete the public/ directory
@@ -154,6 +171,7 @@ jobs:
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --name public \
+            --auth-mode login \
             --enable-file-backup-request-intent
 
       # Rename temp/ to public/
@@ -165,6 +183,7 @@ jobs:
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --source-path temp \
             --destination-path public \
+            --auth-mode login \
             --enable-file-backup-request-intent
 
       # Create a new empty temp/ directory
@@ -174,8 +193,11 @@ jobs:
           az storage directory create \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name temp
+            --name temp \
+            --auth-mode login \
+            --enable-file-backup-request-intent
 
       - name: Cleanup
         run: |
           rm -rf deploy public
+
