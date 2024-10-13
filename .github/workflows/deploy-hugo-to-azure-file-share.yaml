@@ -76,129 +76,130 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: deploy
-          path: ./deploy
+# Deploy Job
+deploy:
+  needs: build
+  runs-on: ubuntu-latest
+  steps:
+    - name: Download Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: deploy
+        path: ./deploy
 
-      - name: Verify Downloaded deploy.zip
-        run: |
-          echo "Contents of downloaded deploy.zip:"
-          unzip -l ./deploy/deploy.zip
-          ls -lh ./deploy/deploy.zip
+    - name: Verify Downloaded deploy.zip
+      run: |
+        echo "Contents of downloaded deploy.zip:"
+        unzip -l ./deploy/deploy.zip
+        ls -lh ./deploy/deploy.zip
 
-      - name: Authenticate with Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Authenticate with Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Check if temp/ directory exists, if not create it
-      - name: Check or Create temp/ Directory
-        run: |
-          echo "Checking if temp/ directory exists..."
-          EXISTS=$(az storage directory exists \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name temp \
-            --auth-mode login \
-            --query exists \
-            --enable-file-backup-request-intent)
-          if [ "$EXISTS" == "false" ]; then
-            echo "temp/ directory does not exist, creating it..."
-            az storage directory create \
-              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --name temp \
-              --auth-mode login \
-              --enable-file-backup-request-intent
-          else
-            echo "temp/ directory exists."
-          fi
-
-      # Check if public/ directory exists, if not create it
-      - name: Check or Create public/ Directory
-        run: |
-          echo "Checking if public/ directory exists..."
-          EXISTS=$(az storage directory exists \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public \
-            --auth-mode login \
-            --query exists \
-            --enable-file-backup-request-intent)
-          if [ "$EXISTS" == "false" ]; then
-            echo "public/ directory does not exist, creating it..."
-            az storage directory create \
-              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --name public \
-              --auth-mode login \
-              --enable-file-backup-request-intent
-          else
-            echo "public/ directory exists."
-          fi
-
-      # Upload new site content to temp/ directory
-      - name: Upload New Hugo Site to Azure temp/ Directory
-        run: |
-          echo "Uploading new files to temp/ directory..."
-          unzip -o ./deploy/deploy.zip -d ./public
-          az storage file upload-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
-            --source ./public
-
-      # Delete all files from public/ directory
-      - name: Delete Old Files in Azure public/ Directory
-        run: |
-          echo "Deleting old files in the Azure public/ directory..."
-          az storage file delete-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
-            --pattern '*' \
-            --auth-mode login \
-            --enable-file-backup-request-intent
-
-      # Delete the public/ directory
-      - name: Delete public/ Directory
-        run: |
-          echo "Deleting public/ directory..."
-          az storage directory delete \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public \
-            --auth-mode login \
-            --enable-file-backup-request-intent
-
-      # Rename temp/ to public/
-      - name: Rename temp/ to public/
-        run: |
-          echo "Renaming temp/ directory to public/..."
-          az storage directory rename \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --source-path temp \
-            --destination-path public \
-            --auth-mode login \
-            --enable-file-backup-request-intent
-
-      # Create a new empty temp/ directory
-      - name: Create New temp/ Directory
-        run: |
-          echo "Creating new temp/ directory..."
+    # Check if temp/ directory exists, if not create it
+    - name: Check or Create temp/ Directory
+      run: |
+        echo "Checking if temp/ directory exists..."
+        EXISTS=$(az storage directory exists \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+          --name temp \
+          --auth-mode login \
+          --query exists)
+        if [ "$EXISTS" == "false" ]; then
+          echo "temp/ directory does not exist, creating it..."
           az storage directory create \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --name temp \
             --auth-mode login \
             --enable-file-backup-request-intent
+        else
+          echo "temp/ directory exists."
+        fi
 
-      - name: Cleanup
-        run: |
-          rm -rf deploy public
+    # Check if public/ directory exists, if not create it
+    - name: Check or Create public/ Directory
+      run: |
+        echo "Checking if public/ directory exists..."
+        EXISTS=$(az storage directory exists \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+          --name public \
+          --auth-mode login \
+          --query exists)
+        if [ "$EXISTS" == "false" ]; then
+          echo "public/ directory does not exist, creating it..."
+          az storage directory create \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --name public \
+            --auth-mode login \
+            --enable-file-backup-request-intent
+        else
+          echo "public/ directory exists."
+        fi
+
+    # Upload new site content to temp/ directory
+    - name: Upload New Hugo Site to Azure temp/ Directory
+      run: |
+        echo "Uploading new files to temp/ directory..."
+        unzip -o ./deploy/deploy.zip -d ./temp
+        az storage file upload-batch \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
+          --source ./temp \
+          --auth-mode login \
+          --enable-file-backup-request-intent
+
+    # Delete all files from public/ directory
+    - name: Delete Old Files in Azure public/ Directory
+      run: |
+        echo "Deleting old files in the public/ directory..."
+        az storage file delete-batch \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
+          --pattern '*' \
+          --auth-mode login \
+          --enable-file-backup-request-intent
+
+    # Delete the public/ directory
+    - name: Delete public/ Directory
+      run: |
+        echo "Deleting public/ directory..."
+        az storage directory delete \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+          --name public \
+          --auth-mode login \
+          --enable-file-backup-request-intent
+
+    # Rename temp/ to public/
+    - name: Rename temp/ to public/
+      run: |
+        echo "Renaming temp/ directory to public/..."
+        az storage directory rename \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+          --source-path temp \
+          --destination-path public \
+          --auth-mode login \
+          --enable-file-backup-request-intent
+
+    # Create a new empty temp/ directory
+    - name: Create New temp/ Directory
+      run: |
+        echo "Creating new temp/ directory..."
+        az storage directory create \
+          --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+          --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+          --name temp \
+          --auth-mode login \
+          --enable-file-backup-request-intent
+
+    - name: Cleanup
+      run: |
+        rm -rf deploy temp
 
