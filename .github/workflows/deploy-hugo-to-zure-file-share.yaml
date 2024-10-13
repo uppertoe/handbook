@@ -98,36 +98,52 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: List Files in Azure File Share (Optional Debug)
+      - name: Upload New Hugo Site to Azure File Share Temp Folder
         run: |
-          echo "Listing files in Azure File Share to verify access..."
-          az storage file list \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --path '' \
-            --output table \
-            --auth-mode login \
-            --enable-file-backup-request-intent 
-
-      - name: Delete Old Files in Azure File Share
-        run: |
-          echo "Deleting old files in the Azure File Share..."
-          az storage file delete-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --source ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --pattern '*' \
-            --auth-mode login \
-            --enable-file-backup-request-intent
-
-      - name: Upload New Hugo Site to Azure File Share
-        run: |
-          echo "Uploading new 'public/' folder to Azure File Share root..."
+          echo "Uploading new 'public/' folder to Azure File Share temp/..."
           unzip -o ./deploy/deploy.zip -d ./public
           az storage file upload-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
             --source ./public \
           
+      - name: Delete Old Files from public/
+        run: |
+          echo "Deleting old files in the Azure File Share public directory..."
+          az storage file delete-batch \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
+            --pattern '*' \
+            --auth-mode login
+            --enable-file-backup-request-intent
+
+      - name: Delete public/ Directory
+        run: |
+          echo "Deleting the public/ directory..."
+          az storage directory delete \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --name public \
+            --auth-mode login
+
+      - name: Rename temp/ to public/
+        run: |
+          echo "Renaming temp/ to public/..."
+          az storage directory move \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --source-path temp \
+            --destination-path public
+
+      - name: Recreate temp/ Directory
+        run: |
+          echo "Recreating empty temp/ directory..."
+          az storage directory create \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --name temp \
+            --auth-mode login
+
       - name: Cleanup
         run: |
           rm -rf deploy public
