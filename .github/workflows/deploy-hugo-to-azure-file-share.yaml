@@ -178,13 +178,11 @@ jobs:
         run: |
           echo "Copying files from temp/ to public/ directory..."
           az storage file copy start-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --destination-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --destination-path public \
-            --source-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --source-path temp \
-            --auth-mode login \
-            --enable-file-backup-request-intent
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+              --destination-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+              --destination-path public \
+              --source-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+              --pattern '*'
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
