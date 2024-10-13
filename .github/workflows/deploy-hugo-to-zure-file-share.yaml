@@ -100,18 +100,14 @@ jobs:
           sudo mv ./azcopy_linux_amd64_*/azcopy /usr/local/bin/
           rm -rf azcopy.tar.gz azcopy_linux_amd64_*
 
-      - name: Set Up Environment Variables for Service Principal Authentication
-        env:
-          AZCOPY_AUTO_LOGIN_TYPE: SPN
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: echo "Environment variables set for AzCopy SPN login."
-
       - name: Delete Old Files in Azure File Share
         env:
           AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
           AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+          AZCOPY_AUTO_LOGIN_TYPE: SPN
+          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           echo "Deleting old files in the Azure File Share public directory..."
           azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive
@@ -120,6 +116,10 @@ jobs:
         env:
           AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
           AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+          AZCOPY_AUTO_LOGIN_TYPE: SPN
+          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           echo "Uploading new 'public/' folder to Azure File Share..."
           
