@@ -118,7 +118,10 @@ jobs:
           echo "File Share: $AZURE_FILE_SHARE_NAME"
 
           echo "Listing storage accounts to verify access..."
-          az storage account list --query "[].{name:name,resourceGroup:resourceGroup}" --output table
+          az storage share list --account-name $AZURE_STORAGE_ACCOUNT_NAME --output table
+
+          az role assignment list --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$AZURE_STORAGE_ACCOUNT_NAME" --output table
+
 
           # Delete files
           echo "Deleting old files in the Azure File Share public directory..."
