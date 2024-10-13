@@ -135,7 +135,7 @@ jobs:
         run: |
           echo "Updating container environment variable to serve from 'temp/' directory..."
           az containerapp update \
-            --name ${{ secrets.CONTAINER_APP_NAME }} \
+            --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=temp" \
             --auth-mode login
@@ -169,7 +169,7 @@ jobs:
         run: |
           echo "Updating container environment variable to serve from 'public/' directory..."
           az containerapp update \
-            --name ${{ secrets.CONTAINER_APP_NAME }} \
+            --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=public" \
             --auth-mode login
