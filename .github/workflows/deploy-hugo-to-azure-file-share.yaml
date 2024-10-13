@@ -76,7 +76,6 @@ jobs:
           name: deploy
           path: ./deploy.zip
 
-  # Deploy Job
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -107,7 +106,8 @@ jobs:
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --name temp \
             --auth-mode login \
-            --query exists)
+            --query exists \
+            --enable-file-backup-request-intent)
           if [ "$EXISTS" == "false" ]; then
             echo "temp/ directory does not exist, creating it..."
             az storage directory create \
@@ -120,44 +120,31 @@ jobs:
             echo "temp/ directory exists."
           fi
 
-      # Check if public/ directory exists, if not create it
-      - name: Check or Create public/ Directory
-        run: |
-          echo "Checking if public/ directory exists..."
-          EXISTS=$(az storage directory exists \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public \
-            --auth-mode login \
-            --query exists)
-          if [ "$EXISTS" == "false" ]; then
-            echo "public/ directory does not exist, creating it..."
-            az storage directory create \
-              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --name public \
-              --auth-mode login \
-              --enable-file-backup-request-intent
-          else
-            echo "public/ directory exists."
-          fi
-
       # Upload new site content to temp/ directory
       - name: Upload New Hugo Site to Azure temp/ Directory
         run: |
           echo "Uploading new files to temp/ directory..."
-          unzip -o ./deploy/deploy.zip -d ./temp
+          unzip -o ./deploy/deploy.zip -d ./public
           az storage file upload-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
-            --source ./temp \
-            --auth-mode login \
-            --enable-file-backup-request-intent
+            --source ./public \
+            --auth-mode login
+
+      # Set container environment to serve from temp/ directory
+      - name: Update Azure Container App to Serve from temp/
+        run: |
+          echo "Updating container environment variable to serve from 'temp/' directory..."
+          az containerapp update \
+            --name ${{ secrets.CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --set-env-vars "SERVE_DIRECTORY=temp" \
+            --auth-mode login
 
       # Delete all files from public/ directory
       - name: Delete Old Files in Azure public/ Directory
         run: |
-          echo "Deleting old files in the public/ directory..."
+          echo "Deleting old files in the Azure public/ directory..."
           az storage file delete-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
@@ -165,41 +152,40 @@ jobs:
             --auth-mode login \
             --enable-file-backup-request-intent
 
-      # Delete the public/ directory
-      - name: Delete public/ Directory
+      # Copy files from temp/ to public/ directory
+      - name: Copy files from temp/ to public/ directory
         run: |
-          echo "Deleting public/ directory..."
-          az storage directory delete \
+          echo "Copying files from temp/ to public/ directory..."
+          az storage file copy start-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public \
-            --auth-mode login \
-            --enable-file-backup-request-intent
-
-      # Rename temp/ to public/
-      - name: Rename temp/ to public/
-        run: |
-          echo "Renaming temp/ directory to public/..."
-          az storage directory rename \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --source-path temp \
+            --destination-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --destination-path public \
+            --source-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
+            --source-path temp \
             --auth-mode login \
             --enable-file-backup-request-intent
 
-      # Create a new empty temp/ directory
-      - name: Create New temp/ Directory
+      # Set container environment to serve from public/ directory
+      - name: Update Azure Container App to Serve from public/
         run: |
-          echo "Creating new temp/ directory..."
-          az storage directory create \
+          echo "Updating container environment variable to serve from 'public/' directory..."
+          az containerapp update \
+            --name ${{ secrets.CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --set-env-vars "SERVE_DIRECTORY=public" \
+            --auth-mode login
+
+      # Cleanup temp/ directory after copying
+      - name: Delete Files from temp/ Directory
+        run: |
+          echo "Deleting old files in the Azure temp/ directory..."
+          az storage file delete-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name temp \
+            --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
+            --pattern '*' \
             --auth-mode login \
             --enable-file-backup-request-intent
 
       - name: Cleanup
         run: |
-          rm -rf deploy temp
-
+          rm -rf deploy public
