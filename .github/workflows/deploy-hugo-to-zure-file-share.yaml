@@ -115,7 +115,8 @@ jobs:
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --source ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --pattern '*' \
-            --auth-mode login
+            --auth-mode login \
+            --enable-file-backup-request-intent
 
       - name: Upload New Hugo Site to Azure File Share
         run: |
