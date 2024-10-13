@@ -151,8 +151,7 @@ jobs:
           az storage file upload-batch \
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
-            --source ./public \
-            --auth-mode login
+            --source ./public
 
       # Delete all files from public/ directory
       - name: Delete Old Files in Azure public/ Directory
