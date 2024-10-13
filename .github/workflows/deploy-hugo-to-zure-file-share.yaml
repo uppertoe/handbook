@@ -77,58 +77,58 @@ jobs:
           path: ./deploy.zip
 
 # Deploy Job
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: deploy
-          path: ./deploy
+deploy:
+  needs: build
+  runs-on: ubuntu-latest
+  steps:
+    - name: Download Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: deploy
+        path: ./deploy
 
-      - name: Verify Downloaded deploy.zip
-        run: |
-          echo "Contents of downloaded deploy.zip:"
-          unzip -l ./deploy/deploy.zip
-          ls -lh ./deploy/deploy.zip
+    - name: Verify Downloaded deploy.zip
+      run: |
+        echo "Contents of downloaded deploy.zip:"
+        unzip -l ./deploy/deploy.zip
+        ls -lh ./deploy/deploy.zip
 
-      - name: Install AzCopy
-        run: |
-          wget https://aka.ms/downloadazcopy-v10-linux -O azcopy.tar.gz
-          tar -xvf azcopy.tar.gz
-          sudo mv ./azcopy_linux_amd64_*/azcopy /usr/local/bin/
-          rm -rf azcopy.tar.gz azcopy_linux_amd64_*
+    - name: Authenticate to Azure
+      env:
+        AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      run: |
+        az login --service-principal \
+          --username $AZURE_CLIENT_ID \
+          --password $AZURE_CLIENT_SECRET \
+          --tenant $AZURE_TENANT_ID
 
-      - name: Delete Old Files in Azure File Share
-        env:
-          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
-          AZCOPY_AUTO_LOGIN_TYPE: SPN
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: |
-          echo "Deleting old files in the Azure File Share public directory..."
-          azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive
+    - name: Delete Old Files in Azure File Share
+      env:
+        AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+        AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+      run: |
+        echo "Deleting old files in the Azure File Share public directory..."
+        az storage file delete-batch \
+          --account-name $AZURE_STORAGE_ACCOUNT_NAME \
+          --source $AZURE_FILE_SHARE_NAME/public \
+          --auth-mode login
 
-      - name: Upload New Public Folder to Azure File Share
-        env:
-          AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
-          AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
-          AZCOPY_AUTO_LOGIN_TYPE: SPN
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: |
-          echo "Uploading new 'public/' folder to Azure File Share..."
-          
-          # Extract the deploy.zip and upload its contents to the Azure File Share
-          unzip -o ./deploy/deploy.zip -d ./public
-          
-          # Use azcopy to upload the contents of the public directory to the Azure File Share
-          azcopy copy './public/*' "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive --overwrite
+    - name: Upload New Public Folder to Azure File Share
+      env:
+        AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+        AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
+      run: |
+        echo "Uploading new 'public/' folder to Azure File Share..."
+        unzip -o ./deploy/deploy.zip -d ./public
+        az storage file upload-batch \
+          --account-name $AZURE_STORAGE_ACCOUNT_NAME \
+          --destination $AZURE_FILE_SHARE_NAME/public \
+          --source ./public \
+          --auth-mode login
 
-      - name: Cleanup
-        run: |
-          rm -rf deploy public
+    - name: Cleanup
+      run: |
+        rm -rf deploy public
