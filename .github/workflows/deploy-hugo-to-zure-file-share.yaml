@@ -106,7 +106,8 @@ jobs:
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --path '' \
             --output table \
-            --auth-mode login
+            --auth-mode login \
+            --enable-file-backup-request-intent 
 
       - name: Delete Old Files in Azure File Share
         run: |
@@ -126,7 +127,8 @@ jobs:
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --destination ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --source ./public \
-            --auth-mode login
+            --auth-mode login \
+            --enable-file-backup-request-intent 
           
       - name: Cleanup
         run: |
