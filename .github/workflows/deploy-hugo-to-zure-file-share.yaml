@@ -20,7 +20,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      HUGO_VERSION: 0.128.0  # Specify your desired Hugo version
+      HUGO_VERSION: 0.135.0  # Specify your desired Hugo version
     steps:
       - name: Install Dependencies
         run: |
@@ -100,23 +100,20 @@ jobs:
           sudo mv ./azcopy_linux_amd64_*/azcopy /usr/local/bin/
           rm -rf azcopy.tar.gz azcopy_linux_amd64_*
 
-      - name: Azure Login with OIDC
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          allow-no-subscriptions: true  # Optional, only needed if the SP has no access to a subscription
-
+      - name: Set Up Service Principal Auth for AzCopy
+        env:
+          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}  # Set client secret as env variable
+        run: |
+          azcopy login --service-principal \
+          --application-id ${{ secrets.AZURE_CLIENT_ID }} \
+          --tenant-id ${{ secrets.AZURE_TENANT_ID }}  # Log in to AzCopy using service principal
+        
       - name: Delete Old Files in Azure File Share
         env:
           AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
           AZURE_FILE_SHARE_NAME: ${{ secrets.AZURE_FILE_SHARE_NAME }}
         run: |
           echo "Deleting old files in the Azure File Share public directory..."
-          
-          # Authenticate AzCopy with the logged-in Azure session
-          azcopy login --identity
 
           # Use azcopy to recursively delete all files in the public directory of the Azure File Share
           azcopy remove "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive
@@ -130,9 +127,6 @@ jobs:
           
           # Extract the deploy.zip and upload its contents to the Azure File Share
           unzip -o ./deploy/deploy.zip -d ./public
-          
-          # Authenticate AzCopy with the logged-in Azure session
-          azcopy login --identity
           
           # Use azcopy to upload the contents of the public directory to the Azure File Share
           azcopy copy './public/*' "https://${{ env.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ env.AZURE_FILE_SHARE_NAME }}/public" --recursive --overwrite
