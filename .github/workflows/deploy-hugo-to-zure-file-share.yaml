@@ -114,7 +114,8 @@ jobs:
           az storage file delete-batch \
             --account-name $AZURE_STORAGE_ACCOUNT_NAME \
             --source $AZURE_FILE_SHARE_NAME/public \
-            --auth-mode login
+            --auth-mode login \
+            --enable-file-backup-request-intent
 
       - name: Upload New Public Folder to Azure File Share
         env:
