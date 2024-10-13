@@ -127,8 +127,6 @@ jobs:
             --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
             --destination ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --source ./public \
-            --auth-mode login \
-            --enable-file-backup-request-intent 
           
       - name: Cleanup
         run: |
