@@ -137,8 +137,7 @@ jobs:
           az containerapp update \
             --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --set-env-vars "SERVE_DIRECTORY=temp" \
-            --auth-mode login
+            --set-env-vars "SERVE_DIRECTORY=temp"
 
       # Delete all files from public/ directory
       - name: Delete Old Files in Azure public/ Directory
@@ -171,8 +170,7 @@ jobs:
           az containerapp update \
             --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --set-env-vars "SERVE_DIRECTORY=public" \
-            --auth-mode login
+            --set-env-vars "SERVE_DIRECTORY=public"
 
       # Cleanup temp/ directory after copying
       - name: Delete Files from temp/ Directory
