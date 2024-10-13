@@ -108,12 +108,6 @@ jobs:
           AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: echo "Environment variables set for AzCopy SPN login."
 
-      - name: Log in to AzCopy with Service Principal
-        run: |
-          azcopy login --service-principal \
-          --application-id ${{ secrets.AZURE_CLIENT_ID }} \
-          --tenant-id ${{ secrets.AZURE_TENANT_ID }}
-
       - name: Delete Old Files in Azure File Share
         env:
           AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
