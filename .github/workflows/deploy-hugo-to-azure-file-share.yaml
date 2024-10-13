@@ -106,7 +106,8 @@ jobs:
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --name temp \
             --auth-mode login \
-            --query exists)
+            --query exists \
+            --enable-file-backup-request-intent)
           if [ "$EXISTS" == "false" ]; then
             echo "temp/ directory does not exist, creating it..."
             az storage directory create \
@@ -128,7 +129,8 @@ jobs:
             --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
             --name public \
             --auth-mode login \
-            --query exists)
+            --query exists \
+            --enable-file-backup-request-intent)
           if [ "$EXISTS" == "false" ]; then
             echo "public/ directory does not exist, creating it..."
             az storage directory create \
