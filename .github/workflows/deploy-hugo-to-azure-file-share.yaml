@@ -173,16 +173,14 @@ jobs:
             --auth-mode login \
             --enable-file-backup-request-intent
 
-      # Copy files from temp/ to public/ directory
-      - name: Copy files from temp/ to public/ directory
+      # Upload new site content to public/ directory
+      - name: Upload New Hugo Site to Azure public/ Directory
         run: |
-          echo "Copying files from temp/ to public/ directory..."
-          az storage file copy start-batch \
-              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-              --destination-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --destination-path public \
-              --source-share ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --pattern '*'
+          echo "Uploading new files to temp/ directory..."
+          az storage file upload-batch \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
+            --source ./public
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
