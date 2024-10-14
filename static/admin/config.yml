@@ -2,10 +2,8 @@ backend:
   name: github
   repo: uppertoe/handbook
   branch: main
-  base_url: /api
-  auth_endpoint: auth
-  auth_token_endpoint: callback
-  app_id: Ov23liOE04rFJoamfRUE
+  base_url: https://handbook.anaesdept.org
+  auth_endpoint: github-proxy
 
 media_folder: "static/images/uploads"
 public_folder: "/images/uploads"
