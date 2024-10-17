@@ -106,58 +106,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y azcopy
 
-      # Check if temp/ directory exists, if not create it
-      - name: Check or Create temp/ Directory
-        run: |
-          echo "Checking if temp/ directory exists..."
-          EXISTS=$(az storage directory exists \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name temp \
-            --auth-mode login \
-            --query exists \
-            --enable-file-backup-request-intent)
-          if [ "$EXISTS" == "false" ]; then
-            echo "temp/ directory does not exist, creating it..."
-            az storage directory create \
-              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --name temp \
-              --auth-mode login \
-              --enable-file-backup-request-intent
-          else
-            echo "temp/ directory exists."
-          fi
-      
-      # Check if temp/ directory exists, if not create it
-      - name: Check or Create public/ Directory
-        run: |
-          echo "Checking if public/ directory exists..."
-          EXISTS=$(az storage directory exists \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-            --name public \
-            --auth-mode login \
-            --query exists \
-            --enable-file-backup-request-intent)
-          if [ "$EXISTS" == "false" ]; then
-            echo "public/ directory does not exist, creating it..."
-            az storage directory create \
-              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-              --share-name ${{ secrets.AZURE_FILE_SHARE_NAME }} \
-              --name public \
-              --auth-mode login \
-              --enable-file-backup-request-intent
-          else
-            echo "public/ directory exists."
-          fi
-
       # Unzip the files
       - name: Unzip the deploy artifact
         run: |
           unzip -o ./deploy/deploy.zip -d ./public
 
-      # Use azcopy to upload files
+      # Upload to temp/ (creating dest folder if necessary)
       - name: Upload new Hugo site content to Azure using azcopy
         run: |
           azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
@@ -171,13 +125,13 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=temp"
 
-      # Remove old files
+      # Remove old files from public/
       - name: Delete Old Files in Azure public/ directory using azcopy
         run: |
           echo "Deleting old files in the Azure public/ directory..."
           azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
-      # Use azcopy to upload files
+      # Copy between temp/ and public/ (recreating public/)
       - name: Upload new Hugo site content to Azure using azcopy
         run: |
           azcopy copy "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
