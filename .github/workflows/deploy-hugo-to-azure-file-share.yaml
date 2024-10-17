@@ -11,14 +11,13 @@ permissions:
   actions: write
   id-token: write
 
-concurrency:
-  group: "deploy-azure-webapp"
-  cancel-in-progress: false
-
 jobs:
   # Build Job
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: "build-azure-webapp"
+      cancel-in-progress: true  # Allow canceling in-progress builds
     env:
       HUGO_VERSION: 0.135.0  # Specify your desired Hugo version
     steps:
@@ -73,6 +72,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: "deploy-azure-webapp"
+      cancel-in-progress: false  # Prevent canceling in-progress deploys
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v3
