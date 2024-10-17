@@ -73,11 +73,6 @@ jobs:
           name: deploy
           path: artifact/
 
-      - name: Authenticate with Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       # Parse secrets from AZURE_CREDENTIALS and export as environment variables
       - name: Parse secrets from JSON and export environment variables
         run: |
