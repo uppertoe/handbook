@@ -184,7 +184,7 @@ jobs:
       # Use azcopy to upload files
       - name: Upload new Hugo site content to Azure using azcopy
         run: |
-          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
+          azcopy copy "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
