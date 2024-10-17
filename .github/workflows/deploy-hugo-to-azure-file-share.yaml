@@ -102,7 +102,7 @@ jobs:
       # Upload to temp/ (creating dest folder if necessary)
       - name: Upload new Hugo site content to temp/
         run: |
-          azcopy copy "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
+          azcopy sync "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --compare-hash --put-md5 --delete-destination
 
       # Set container environment to serve from temp/ directory
       - name: Update Azure Container App to Serve from temp/
@@ -113,16 +113,10 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=temp"
 
-      # Remove old files from public/
-      - name: Delete Old Files in Azure public/ directory using azcopy
-        run: |
-          echo "Deleting old files in the Azure public/ directory..."
-          azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
-
       # Copy between temp/ and public/ (recreating public/)
       - name: Copy new site in temp/ to public/
         run: |
-          azcopy copy "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
+          azcopy sync "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public"  --compare-hash --put-md5 --delete-destination
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
@@ -132,12 +126,6 @@ jobs:
             --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=public"
-
-      # Clean up temp/
-      - name: Delete Old Files in Azure temp/ Directory using azcopy
-        run: |
-          echo "Deleting old files in the Azure temp/ directory..."
-          azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
 
       - name: Cleanup
         run: |
