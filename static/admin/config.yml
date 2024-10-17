@@ -2,8 +2,8 @@ backend:
   name: github
   repo: uppertoe/handbook
   branch: main
-  base_url: https://handbook.anaesdept.org
-  auth_endpoint: github-proxy
+  base_url: http://127.0.0.1:8000
+  auth_endpoint: cms/auth
 
 media_folder: "static/images/uploads"
 public_folder: "/images/uploads"
@@ -12,14 +12,19 @@ collections:
   - name: "articles"
     label: "Articles"
     folder: "content/articles"
+    path: '{{slug}}/index'
+    media_folder: ''
+    public_folder: ''
     create: true
     slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     fields:
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Publish Date", name: "date", widget: "datetime" }
       - { label: "Draft", name: "draft", widget: "boolean", default: false }
-      - { label: "Hospitals", name: "hospitals", widget: "list", field: { label: "Hospital", name: "hospital", widget: "string" } }
-      - { label: "Tags", name: "tags", widget: "list", field: { label: "Tag", name: "tag", widget: "string" } }
+      - { label: "Feature Image", name: "featured", widget: "image", required: false}
+      - { label: 'Body', name: 'body', widget: 'markdown' }
+      - { label: "Hospitals", name: "hospitals", widget: "list", required: false, field: { label: "Hospital", name: "hospital", widget: "string" } }
+      - { label: "Tags", name: "tags", widget: "list", required: false, field: { label: "Tag", name: "tag", widget: "string" } }
       - {
           label: "Authors", 
           name: "authors", 
@@ -28,10 +33,11 @@ collections:
           value_field: "file", 
           search_fields: ["name"], 
           display_fields: ["name"], 
-          multiple: true
+          multiple: true,
+          required: false
         }
-      - { label: "Series", name: "series", widget: "list", field: { label: "Series", name: "series", widget: "string" } }
-      - { label: "Series Order", name: "series_order", widget: "number" }
+      - { label: "Series", name: "series", widget: "list", required: false, field: { label: "Series", name: "series", widget: "string" } }
+      - { label: "Series Order", name: "series_order", widget: "number", value_type: "int", required: false  }
 
   - name: "authors"
     label: "Authors"

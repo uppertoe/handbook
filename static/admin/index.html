@@ -4,11 +4,53 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Content Manager</title>
-    <link href="admin/config.yml" type="text/yaml" rel="cms-config-url">
+    <link href="cms/config.yml" type="text/yaml" rel="cms-config-url">
   </head>
   <body>
     <!-- Include the Decap CMS script -->
     <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+    <script>
+      // Intercept Decap CMS fetch requests
+      const originalFetch = window.fetch;
+  
+      window.fetch = async function(resource, options = {}) {
+          // Check if the request is made to 'api.github.com'
+          if (resource.startsWith('https://api.github.com')) {
+              // Proxy the request through the Flask backend
+              const proxiedUrl = `/cms/proxy?url=${encodeURIComponent(resource)}`;
+  
+              // Get the CSRF token from the meta tag
+              const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  
+              // Ensure the headers exist
+              const headers = options.headers ? new Headers(options.headers) : new Headers();
+  
+              // Add the CSRF token to the request headers
+              headers.append('X-CSRF-Token', csrfToken);
+  
+              // Forward the original request options (method, headers, body, etc.)
+              const response = await originalFetch(proxiedUrl, {
+                  method: options.method,
+                  headers: headers,
+                  body: options.body,
+                  mode: options.mode,
+                  credentials: options.credentials
+              });
+  
+              // If the response includes a new CSRF token, update the meta tag
+              const newCMSToken = response.headers.get('X-CSRF-Token');
+              if (newCMSToken) {
+                  document.querySelector('meta[name="csrf-token"]').setAttribute('content', newCMSToken);
+              }
+  
+              return response;
+          }
+  
+          // For non-GitHub requests, perform the original fetch
+          return originalFetch(resource, options);
+      };
+    </script>
   </body>
 </html>
