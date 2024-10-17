@@ -84,25 +84,13 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # Install azcopy using Microsoft's recommended package
+      
+      # Install azcopy using the custom action
       - name: Install azcopy
-        run: |
-          UBUNTU_VERSION=$(lsb_release -rs)
-          wget -O packages-microsoft-prod.deb https://packages.microsoft.com/config/ubuntu/${UBUNTU_VERSION}/packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y azcopy
-
-      # Extract credentials from AZURE_CREDENTIALS and authenticate azcopy
-      - name: Authenticate azcopy with service principal
-        run: |
-          AZURE_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)
-          AZURE_CLIENT_SECRET=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientSecret)
-
-          export AZCOPY_SPA_CLIENT_SECRET=$AZURE_CLIENT_SECRET
-
-          azcopy login --service-principal --application-id $AZURE_CLIENT_ID
+        uses: kheiakiyama/install-azcopy-action@v1
+        with:
+          version: 'v10'
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Check if temp/ directory exists, if not create it
       - name: Check or Create temp/ Directory
@@ -158,7 +146,7 @@ jobs:
       # Use azcopy to upload files
       - name: Upload new Hugo site content to Azure using azcopy
         run: |
-          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
+          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive --set-content-type
 
       # Set container environment to serve from temp/ directory
       - name: Update Azure Container App to Serve from temp/
@@ -178,7 +166,7 @@ jobs:
       # Use azcopy to upload files
       - name: Upload new Hugo site content to Azure using azcopy
         run: |
-          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
+          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive --set-content-type
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
