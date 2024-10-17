@@ -102,7 +102,7 @@ jobs:
       # Upload to temp/ (creating dest folder if necessary)
       - name: Upload new Hugo site content to temp/
         run: |
-          azcopy sync "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --compare-hash --put-md5 --delete-destination
+          azcopy sync "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --compare-hash --put-md5 --delete-destination=true
 
       # Set container environment to serve from temp/ directory
       - name: Update Azure Container App to Serve from temp/
@@ -116,7 +116,7 @@ jobs:
       # Copy between temp/ and public/ (recreating public/)
       - name: Copy new site in temp/ to public/
         run: |
-          azcopy sync "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public"  --compare-hash --put-md5 --delete-destination
+          azcopy sync "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public"  --compare-hash --put-md5 --delete-destination=true
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
