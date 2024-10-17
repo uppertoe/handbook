@@ -85,10 +85,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Install jq to parse JSON
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
       # Parse secrets from AZURE_CREDENTIALS and export as environment variables
       - name: Parse secrets from JSON and export environment variables
         run: |
