@@ -54,20 +54,11 @@ jobs:
             --gc \
             --minify
 
-      - name: Zip Public Folder
-        run: |
-          cd public
-          zip -r ../deploy.zip .  # Zips the contents of 'public/' into 'deploy.zip'
-
-      - name: Check deploy.zip Size
-        run: |
-          ls -lh ./deploy.zip
-
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy
-          path: ./deploy.zip
+          path: public/
 
   deploy:
     needs: build
@@ -77,10 +68,10 @@ jobs:
       cancel-in-progress: false  # Prevent canceling in-progress deploys
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: deploy
-          path: ./deploy
+          path: artifact/
 
       - name: Authenticate with Azure
         uses: azure/login@v1
@@ -99,7 +90,6 @@ jobs:
           echo "AZCOPY_TENANT_ID=$AZURE_TENANT_ID" >> $GITHUB_ENV
           echo "AZCOPY_AUTO_LOGIN_TYPE=SPN" >> $GITHUB_ENV
 
-      # Install azcopy
       - name: Install azcopy
         run: |
           UBUNTU_VERSION=$(lsb_release -rs)
@@ -108,15 +98,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y azcopy
 
-      # Unzip the files
-      - name: Unzip the deploy artifact
-        run: |
-          unzip -o ./deploy/deploy.zip -d ./public
-
       # Upload to temp/ (creating dest folder if necessary)
       - name: Upload new Hugo site content to Azure using azcopy
         run: |
-          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
+          azcopy copy "artifact/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
 
       # Set container environment to serve from temp/ directory
       - name: Update Azure Container App to Serve from temp/
