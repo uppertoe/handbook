@@ -53,18 +53,12 @@ jobs:
         run: |
           hugo \
             --gc \
-            --minify \
-            --baseURL "${{ steps.pages.outputs.base_url }}/"  
+            --minify
 
       - name: Zip Public Folder
         run: |
           cd public
           zip -r ../deploy.zip .  # Zips the contents of 'public/' into 'deploy.zip'
-
-      - name: Verify deploy.zip Contents
-        run: |
-          echo "Contents of deploy.zip:"
-          unzip -l ./deploy.zip
 
       - name: Check deploy.zip Size
         run: |
@@ -86,16 +80,29 @@ jobs:
           name: deploy
           path: ./deploy
 
-      - name: Verify Downloaded deploy.zip
-        run: |
-          echo "Contents of downloaded deploy.zip:"
-          unzip -l ./deploy/deploy.zip
-          ls -lh ./deploy/deploy.zip
-
       - name: Authenticate with Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Install azcopy using Microsoft's recommended package
+      - name: Install azcopy
+        run: |
+          UBUNTU_VERSION=$(lsb_release -rs)
+          wget -O packages-microsoft-prod.deb https://packages.microsoft.com/config/ubuntu/${UBUNTU_VERSION}/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y azcopy
+
+      # Extract credentials from AZURE_CREDENTIALS and authenticate azcopy
+      - name: Authenticate azcopy with service principal
+        run: |
+          AZURE_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)
+          AZURE_CLIENT_SECRET=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientSecret)
+
+          export AZCOPY_SPA_CLIENT_SECRET=$AZURE_CLIENT_SECRET
+
+          azcopy login --service-principal --application-id $AZURE_CLIENT_ID
 
       # Check if temp/ directory exists, if not create it
       - name: Check or Create temp/ Directory
@@ -143,15 +150,15 @@ jobs:
             echo "public/ directory exists."
           fi
 
-      # Upload new site content to temp/ directory
-      - name: Upload New Hugo Site to Azure temp/ Directory
+      # Unzip the files
+      - name: Unzip the deploy artifact
         run: |
-          echo "Uploading new files to temp/ directory..."
           unzip -o ./deploy/deploy.zip -d ./public
-          az storage file upload-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
-            --source ./public
+
+      # Use azcopy to upload files
+      - name: Upload new Hugo site content to Azure using azcopy
+        run: |
+          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
 
       # Set container environment to serve from temp/ directory
       - name: Update Azure Container App to Serve from temp/
@@ -162,25 +169,16 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=temp"
 
-      # Delete all files from public/ directory
-      - name: Delete Old Files in Azure public/ Directory
+      # Remove old files
+      - name: Delete Old Files in Azure public/ directory using azcopy
         run: |
           echo "Deleting old files in the Azure public/ directory..."
-          az storage file delete-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
-            --pattern '*' \
-            --auth-mode login \
-            --enable-file-backup-request-intent
+          azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
-      # Upload new site content to public/ directory
-      - name: Upload New Hugo Site to Azure public/ Directory
+      # Use azcopy to upload files
+      - name: Upload new Hugo site content to Azure using azcopy
         run: |
-          echo "Uploading new files to temp/ directory..."
-          az storage file upload-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --destination ${{ secrets.AZURE_FILE_SHARE_NAME }}/public \
-            --source ./public
+          azcopy copy "./public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
       # Set container environment to serve from public/ directory
       - name: Update Azure Container App to Serve from public/
@@ -191,16 +189,11 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --set-env-vars "SERVE_DIRECTORY=public"
 
-      # Cleanup temp/ directory after copying
-      - name: Delete Files from temp/ Directory
+      # Clean up temp/
+      - name: Delete Old Files in Azure public/ Directory using azcopy
         run: |
-          echo "Deleting old files in the Azure temp/ directory..."
-          az storage file delete-batch \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
-            --source ${{ secrets.AZURE_FILE_SHARE_NAME }}/temp \
-            --pattern '*' \
-            --auth-mode login \
-            --enable-file-backup-request-intent
+          echo "Deleting old files in the Azure public/ directory..."
+          azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
 
       - name: Cleanup
         run: |
