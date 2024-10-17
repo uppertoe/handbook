@@ -72,6 +72,12 @@ jobs:
         with:
           name: deploy
           path: artifact/
+      
+      # Login required for container envs
+      - name: Authenticate with Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Parse secrets from AZURE_CREDENTIALS and export as environment variables
       - name: Parse secrets from JSON and export environment variables
@@ -94,7 +100,7 @@ jobs:
           sudo apt-get install -y azcopy
 
       # Upload to temp/ (creating dest folder if necessary)
-      - name: Upload new Hugo site content to Azure using azcopy
+      - name: Upload new Hugo site content to temp/
         run: |
           azcopy copy "artifact/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
 
@@ -114,7 +120,7 @@ jobs:
           azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
       # Copy between temp/ and public/ (recreating public/)
-      - name: Upload new Hugo site content to Azure using azcopy
+      - name: Copy new site in temp/ to public/
         run: |
           azcopy copy "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public" --recursive
 
@@ -128,11 +134,11 @@ jobs:
             --set-env-vars "SERVE_DIRECTORY=public"
 
       # Clean up temp/
-      - name: Delete Old Files in Azure public/ Directory using azcopy
+      - name: Delete Old Files in Azure temp/ Directory using azcopy
         run: |
-          echo "Deleting old files in the Azure public/ directory..."
+          echo "Deleting old files in the Azure temp/ directory..."
           azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp" --recursive
 
       - name: Cleanup
         run: |
-          rm -rf deploy public
+          rm -rf deploy artifact
