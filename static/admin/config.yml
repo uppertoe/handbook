@@ -2,7 +2,7 @@ backend:
   name: github
   repo: uppertoe/handbook
   branch: main
-  base_url: http://127.0.0.1:8000
+  base_url: https://handbook.anaesdept.org
   auth_endpoint: cms/auth
 
 media_folder: "static/images/uploads"
