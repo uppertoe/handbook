@@ -1,58 +1,96 @@
 <!DOCTYPE html>
 <html>
+
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
-    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Content Manager</title>
     <link href="cms/config.yml" type="text/yaml" rel="cms-config-url">
-    <!-- CSS Overrides for mobile -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/hithismani/responsive-decap@main/dist/responsive.min.css"> 
   </head>
+
   <body>
     <!-- Include the Decap CMS script -->
     <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
     <script>
+      // Initialize csrf_token as an empty string
+      let csrfToken = '';
+
       // Intercept Decap CMS fetch requests
       const originalFetch = window.fetch;
-  
-      window.fetch = async function(resource, options = {}) {
-          // Check if the request is made to 'api.github.com'
-          if (resource.startsWith('https://api.github.com')) {
-              // Proxy the request through the Flask backend
-              const proxiedUrl = `/cms/proxy?url=${encodeURIComponent(resource)}`;
-  
-              // Get the CSRF token from the meta tag
-              const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-  
-              // Ensure the headers exist
-              const headers = options.headers ? new Headers(options.headers) : new Headers();
-  
-              // Add the CSRF token to the request headers
-              headers.append('X-CSRF-Token', csrfToken);
-  
-              // Forward the original request options (method, headers, body, etc.)
-              const response = await originalFetch(proxiedUrl, {
-                  method: options.method,
-                  headers: headers,
-                  body: options.body,
-                  mode: options.mode,
-                  credentials: options.credentials
-              });
-  
-              // If the response includes a new CSRF token, update the meta tag
-              const newCMSToken = response.headers.get('X-CSRF-Token');
-              if (newCMSToken) {
-                  document.querySelector('meta[name="csrf-token"]').setAttribute('content', newCMSToken);
-              }
-  
-              return response;
+
+      window.fetch = async function (resource, options = {}) {
+        // Ensure the headers exist
+        const headers = options.headers ? new Headers(options.headers) : new Headers();
+
+        // Check if the request is made to 'api.github.com'
+        if (resource.startsWith('https://api.github.com')) {
+          // Proxy the request through the Flask backend
+          resource = `/cms/proxy?url=${encodeURIComponent(resource)}`;
+          // Add the CSRF token to the request headers
+          headers.append('X-CSRF-Token', csrfToken);
+
+        } else if (resource.startsWith('/cms/auth')) {
+          // Add the CSRF token to the request headers
+          headers.append('X-CSRF-Token', csrfToken);
+        }
+
+        // Forward the original request options (method, headers, body, etc.)
+        const response = await originalFetch(resource, {
+          method: options.method,
+          headers: headers,
+          body: options.body,
+          mode: options.mode,
+          credentials: options.credentials
+        });
+
+        // If the response includes a new CSRF token, update the meta tag
+        const newCsrfToken = response.headers.get('X-CSRF-Token');
+        if (newCsrfToken) {
+          csrfToken = newCsrfToken;
+        }
+
+        return response;
+      }
+
+
+      // Function to handle the button when it's found
+      function handleButton(button) {
+        button.textContent = 'Login to Content Management System';
+      }
+
+      // Function to observe the DOM for the button
+      function observeForButton() {
+        // Create a new MutationObserver to monitor the DOM for changes
+        const observer = new MutationObserver((mutationsList, observer) => {
+          const button = document.querySelector('button'); // Replace with a more specific selector if needed
+          if (button) {
+            // Button found, handle it and stop observing
+            handleButton(button);
+            observer.disconnect();  // Stop observing once the button is found
           }
-  
-          // For non-GitHub requests, perform the original fetch
-          return originalFetch(resource, options);
-      };
+        });
+
+        // Start observing the document's body for changes
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // Call the observeForButton function on page load
+      window.onload = observeForButton;
+
+      // Get the initial CSRF token from the auth window message
+      function receiveCSRF(e) {
+        const data = JSON.parse(e.data);
+
+        if (data.csrf) {
+          csrfToken = data.csrf
+        }
+      }
+
+      window.addEventListener("message", receiveCSRF, false);
+
     </script>
   </body>
+
 </html>
