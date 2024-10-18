@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex" />
     <title>Content Manager</title>
     <link href="cms/config.yml" type="text/yaml" rel="cms-config-url">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/hithismani/responsive-decap@main/dist/responsive.min.css"> 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/hithismani/responsive-decap@main/dist/responsive.min.css">
   </head>
 
   <body>
@@ -54,37 +54,22 @@
         return response;
       }
 
-
-      // Function to handle the button when it's found
-      function handleButton(button) {
-        button.textContent = 'Login to Content Management System';
-      }
-
-      // Function to observe the DOM for the button
-      function observeForButton() {
-        // Create a new MutationObserver to monitor the DOM for changes
-        const observer = new MutationObserver((mutationsList, observer) => {
-          const button = document.querySelector('button'); // Replace with a more specific selector if needed
-          if (button) {
-            // Button found, handle it and stop observing
-            handleButton(button);
-            observer.disconnect();  // Stop observing once the button is found
-          }
-        });
-
-        // Start observing the document's body for changes
-        observer.observe(document.body, { childList: true, subtree: true });
-      }
-
-      // Call the observeForButton function on page load
-      window.onload = observeForButton;
-
-      // Get the initial CSRF token from the auth window message
       function receiveCSRF(e) {
-        const data = JSON.parse(e.data);
+        try {
+          // Try to parse the message data as JSON
+          const data = JSON.parse(e.data);
 
-        if (data.csrf) {
-          csrfToken = data.csrf
+          // If the message contains the 'csrf' field, update the CSRF token
+          if (data.csrf) {
+            csrfToken = data.csrf;
+            console.log("CSRF Token received:", csrfToken);
+
+            // If necessary, remove the event listener after CSRF token is processed
+            window.removeEventListener("message", receiveCSRF, false);
+          }
+        } catch (error) {
+          // If the message isn't valid JSON, handle the error gracefully
+          console.error("Error parsing message data:", error);
         }
       }
 
