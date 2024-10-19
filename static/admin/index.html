@@ -57,6 +57,8 @@
       function receiveCSRF(e) {
         try {
           // Try to parse the message data as JSON
+          console.log(e)
+          console.log(e.data)
           const data = JSON.parse(e.data);
 
           // If the message contains the 'csrf' field, update the CSRF token
