@@ -11,7 +11,7 @@ tags:
   - offsite anaesthesia
 authors: []
 ---
-The Paediatric Infant Perinatal Emergency Retrieval is designed for urgent stabilisation and retrieval of patients across Victoria. We are fortunate that they are able to extend their services to the transport of RCH patients between hospitals when treatment availability necessitates this. 2
+The Paediatric Infant Perinatal Emergency Retrieval is designed for urgent stabilisation and retrieval of patients across Victoria. We are fortunate that they are able to extend their services to the transport of RCH patients between hospitals when treatment availability necessitates this.
 
 ## Contact
 
