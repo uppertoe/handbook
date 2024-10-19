@@ -80,3 +80,11 @@ th {
 td {
     background-color: #ffffff; /* White for table cells */
 }
+
+/* Images */
+img {
+    max-width: 100%; /* Scale image to the container width */
+    height: auto; /* Keep the image's aspect ratio */
+    display: block; /* Remove extra spacing below images */
+    margin: 20px 0; /* Add margin for spacing around the image */
+}
