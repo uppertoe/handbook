@@ -11,7 +11,7 @@ series:
   - Code Stroke
 series_order: 4
 ---
-The RCH Anaesthesia department has an arrangement to ensure that staff travelling to RMH are able to safely and reliably access parking and a secure staff entrance.2
+The RCH Anaesthesia department has an arrangement to ensure that staff travelling to RMH are able to safely and reliably access parking and a secure staff entrance.
 
 ## Arrangements for anaesthetists and anaesthesia technicians
 Transport arrangements depend on PIPER capacity, ambulance type and the staff who have a clinical requirement to accompany the patient.
