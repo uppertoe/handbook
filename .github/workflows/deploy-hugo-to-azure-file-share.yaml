@@ -99,33 +99,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y azcopy
 
-      - name: Check current site version
-        id: check_version
+      # Upload to temp/ (creating dest folder if necessary)
+      - name: Upload new Hugo site content to temp/
         run: |
-          # Use curl to get the current version and store it in a variable
-          CURRENT_VERSION=$(curl -s ${{ secrets.WEBHOOK_CURRENT_SERVE_DIRECTORY }})
-          
-          # Output the current version (for debugging purposes)
-          echo "Current version is $CURRENT_VERSION"
+          azcopy sync "public/" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp/" --mirror-mode=true --delete-destination=true --put-md5
 
-          # Set the output for use in other steps
-          echo "::set-output name=current::$CURRENT_VERSION"
-      
-      - name: Deploy to the other version
+      # Set container environment to serve from temp/ directory
+      - name: Update Azure Container App to Serve from temp/
         run: |
-          # Compare the current version and deploy to the other one
-          if [ "${{ steps.check_version.outputs.current }}" == "blue" ]; then
-            echo "Deploying to green version"
-            azcopy sync "public/" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/" --mirror-mode=true --delete-destination=true --put-md5
-          elif [ "${{ steps.check_version.outputs.current }}" == "green" ]; then
-            echo "Deploying to blue version"
-            azcopy sync "public/" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/" --mirror-mode=true --delete-destination=true --put-md5
-          else
-            echo "Unknown version: ${{ steps.check_version.outputs.current }}"
-            exit 1
-          fi
+          echo "Updating container environment variable to serve from 'temp/' directory..."
+          az containerapp update \
+            --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --set-env-vars "SERVE_DIRECTORY=temp"
 
-      - name: Toggle the site version
+      # Copy between temp/ and public/ (recreating public/)
+      - name: Copy new site in temp/ to public/
         run: |
-          # Use curl to get the current version and store it in a variable
-          CURRENT_VERSION=$(curl -s ${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }})
+          azcopy sync "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/temp/" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/public/"  --mirror-mode=true --delete-destination=true --put-md5
+
+      # Set container environment to serve from public/ directory
+      - name: Update Azure Container App to Serve from public/
+        run: |
+          echo "Updating container environment variable to serve from 'public/' directory..."
+          az containerapp update \
+            --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --set-env-vars "SERVE_DIRECTORY=public"
+
+      - name: Cleanup
+        run: |
+          rm -rf deploy public
