@@ -72,12 +72,6 @@ jobs:
         with:
           name: deploy
           path: public/
-      
-      # Login required for container envs
-      - name: Authenticate with Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Parse secrets from AZURE_CREDENTIALS and export as environment variables
       - name: Parse secrets from JSON and export environment variables
@@ -102,20 +96,14 @@ jobs:
       - name: Check current site version
         id: check_version
         run: |
-          # Create a file to store cookies
-          COOKIE_FILE=cookies.txt
-
           # Use curl to get the current version and store the session cookie
-          CURRENT_VERSION=$(curl -s -c $COOKIE_FILE "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_CURRENT_SERVE_DIRECTORY }}")
+          CURRENT_VERSION=$(curl -s "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_CURRENT_SERVE_DIRECTORY }}")
           
           # Output the current version (for debugging purposes)
           echo "Current version is $CURRENT_VERSION"
 
           # Set the output for use in other steps
           echo "::set-output name=current::$CURRENT_VERSION"
-          
-          # Save the cookie for later use
-          echo "Session cookie saved in $COOKIE_FILE"
       
       - name: Deploy to the other version
         run: |
@@ -130,17 +118,12 @@ jobs:
             echo "Unknown version: ${{ steps.check_version.outputs.current }}"
             exit 1
           fi
-    
-      - name: Fetch CSRF Token from GitHub Secrets
-        run: |
-          TOKEN="${{ secrets.WORKFLOW_TOKEN }}"
-          echo "Token fetched: $TOKEN"
 
       - name: Toggle the site version
         run: |
           # Use curl to toggle the site version, passing the CSRF token and session cookie
           CURRENT_VERSION=$(curl -X POST \
-            -H "X-CSRFToken: ${{ secrets.WORKFLOW_TOKEN }}" \
+            -H "X-Webhook-Password: ${{ secrets.WORKFLOW_TOKEN }}" \
             -b cookies.txt \
             "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
 
