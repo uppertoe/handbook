@@ -103,7 +103,7 @@ jobs:
           echo "Current version is $CURRENT_VERSION"
 
           # Set the output for use in other steps
-          echo "current=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
       
       - name: Deploy to the other version
         run: |
