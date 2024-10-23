@@ -142,10 +142,10 @@ jobs:
       - name: Remove files from the other folder
         run: |
           # Clear the contents of the other folder
-          if [ "${{ steps.check_version.outputs.current }}" == "blue" ]; then
+          if [ "$CURRENT_VERSION" == "blue" ]; then
             echo "Clearing the blue folder"
             azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/*" --recursive
-          elif [ "${{ steps.check_version.outputs.current }}" == "green" ]; then
+          elif [ "$CURRENT_VERSION" == "green" ]; then
             echo "Deploying to blue version"
             azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/*" --recursive
           else
