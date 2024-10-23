@@ -100,22 +100,28 @@ jobs:
           CURRENT_VERSION=$(curl -s "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_CURRENT_SERVE_DIRECTORY }}")
           
           # Output the current version (for debugging purposes)
-          echo "Current version is $CURRENT_VERSION"
-
+          echo "Current version is: $CURRENT_VERSION"
+          
+          # Ensure that the value is correct
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Error: CURRENT_VERSION is empty!"
+            exit 1
+          fi
+          
           # Set the output for use in other steps
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
       
       - name: Deploy to the other version
         run: |
           # Compare the current version and deploy to the other one
-          if [ "${{ steps.check_version.outputs.current }}" == "blue" ]; then
+          if [ "$CURRENT_VERSION" == "blue" ]; then
             echo "Deploying to green version"
             azcopy copy "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/" --recursive=true --overwrite=true
-          elif [ "${{ steps.check_version.outputs.current }}" == "green" ]; then
+          elif [ "$CURRENT_VERSION" == "green" ]; then
             echo "Deploying to blue version"
             azcopy copy "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/" --recursive=true --overwrite=true
           else
-            echo "Unknown version: ${{ steps.check_version.outputs.current }}"
+            echo "Unknown version: $CURRENT_VERSION"
             exit 1
           fi
 
@@ -149,6 +155,6 @@ jobs:
             echo "Deploying to blue version"
             azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/*" --recursive
           else
-            echo "Unknown version: ${{ steps.check_version.outputs.current }}"
+            echo "Unknown version: $CURRENT_VERSION"
             exit 1
           fi
