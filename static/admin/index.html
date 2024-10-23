@@ -29,11 +29,11 @@
           // Proxy the request through the Flask backend
           resource = `/cms/proxy?url=${encodeURIComponent(resource)}`;
           // Add the CSRF token to the request headers
-          headers.append('X-CSRF-Token', csrfToken);
+          headers.append('X-CSRFToken', csrfToken);
 
         } else if (resource.startsWith('/cms/auth')) {
           // Add the CSRF token to the request headers
-          headers.append('X-CSRF-Token', csrfToken);
+          headers.append('X-CSRFToken', csrfToken);
         }
 
         // Forward the original request options (method, headers, body, etc.)
@@ -46,7 +46,7 @@
         });
 
         // If the response includes a new CSRF token, update the meta tag
-        const newCsrfToken = response.headers.get('X-CSRF-Token');
+        const newCsrfToken = response.headers.get('X-CSRFToken');
         if (newCsrfToken) {
           csrfToken = newCsrfToken;
         }

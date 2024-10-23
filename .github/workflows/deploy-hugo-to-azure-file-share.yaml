@@ -134,5 +134,5 @@ jobs:
         run: |
           # Use curl to get the current version and store it in a variable
           CURRENT_VERSION=$(curl -X POST \
-          -H "X-CSRF-Token: ${{ secrets.WORKFLOW_TOKEN }}" \
+          -H "X-CSRFToken: ${{ secrets.WORKFLOW_TOKEN }}" \
           "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
