@@ -103,17 +103,17 @@ jobs:
           echo "Current version is $CURRENT_VERSION"
 
           # Set the output for use in other steps
-          echo "::set-output name=current::$CURRENT_VERSION"
+          echo "current=$CURRENT_VERSION" >> $GITHUB_ENV
       
       - name: Deploy to the other version
         run: |
           # Compare the current version and deploy to the other one
           if [ "${{ steps.check_version.outputs.current }}" == "blue" ]; then
             echo "Deploying to green version"
-            azcopy sync "public/" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/" --mirror-mode=true --delete-destination=true --put-md5
+            azcopy copy "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/" --recursive=true --overwrite=true
           elif [ "${{ steps.check_version.outputs.current }}" == "green" ]; then
             echo "Deploying to blue version"
-            azcopy sync "public/" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/" --mirror-mode=true --delete-destination=true --put-md5
+            azcopy copy "public/*" "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/" --recursive=true --overwrite=true
           else
             echo "Unknown version: ${{ steps.check_version.outputs.current }}"
             exit 1
@@ -122,10 +122,33 @@ jobs:
       - name: Toggle the site version
         run: |
           # Use curl to toggle the site version, passing the CSRF token and session cookie
-          CURRENT_VERSION=$(curl -X POST \
+          HTTP_RESPONSE=$(curl -w "%{http_code}" -X POST \
             -H "X-Webhook-Password: ${{ secrets.WORKFLOW_TOKEN }}" \
-            -b cookies.txt \
+            -o response.txt \
             "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
+
+          # Extract the body from the response file
+          CURRENT_VERSION=$(cat response.txt)
 
           # Output the current version (for debugging purposes)
           echo "Current version is $CURRENT_VERSION"
+
+          # Check if the HTTP response code is 200
+          if [ "$HTTP_RESPONSE" -ne 200 ]; then
+            echo "Failed to toggle the site version. HTTP Status: $HTTP_RESPONSE"
+            exit 1
+          fi
+
+      - name: Remove files from the other folder
+        run: |
+          # Clear the contents of the other folder
+          if [ "${{ steps.check_version.outputs.current }}" == "blue" ]; then
+            echo "Clearing the blue folder"
+            azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/*" --recursive
+          elif [ "${{ steps.check_version.outputs.current }}" == "green" ]; then
+            echo "Deploying to blue version"
+            azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/*" --recursive
+          else
+            echo "Unknown version: ${{ steps.check_version.outputs.current }}"
+            exit 1
+          fi
