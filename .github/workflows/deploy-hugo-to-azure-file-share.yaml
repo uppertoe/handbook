@@ -102,14 +102,20 @@ jobs:
       - name: Check current site version
         id: check_version
         run: |
-          # Use curl to get the current version and store it in a variable
-          CURRENT_VERSION=$(curl -s "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_CURRENT_SERVE_DIRECTORY }}")
+          # Create a file to store cookies
+          COOKIE_FILE=cookies.txt
+
+          # Use curl to get the current version and store the session cookie
+          CURRENT_VERSION=$(curl -s -c $COOKIE_FILE "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_CURRENT_SERVE_DIRECTORY }}")
           
           # Output the current version (for debugging purposes)
           echo "Current version is $CURRENT_VERSION"
 
           # Set the output for use in other steps
           echo "::set-output name=current::$CURRENT_VERSION"
+          
+          # Save the cookie for later use
+          echo "Session cookie saved in $COOKIE_FILE"
       
       - name: Deploy to the other version
         run: |
@@ -132,7 +138,11 @@ jobs:
 
       - name: Toggle the site version
         run: |
-          # Use curl to get the current version and store it in a variable
+          # Use curl to toggle the site version, passing the CSRF token and session cookie
           CURRENT_VERSION=$(curl -X POST \
-          -H "X-CSRFToken: ${{ secrets.WORKFLOW_TOKEN }}" \
-          "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
+            -H "X-CSRFToken: ${{ secrets.WORKFLOW_TOKEN }}" \
+            -b cookies.txt \
+            "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
+
+          # Output the current version (for debugging purposes)
+          echo "Current version is $CURRENT_VERSION"
