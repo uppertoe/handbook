@@ -124,8 +124,15 @@ jobs:
             echo "Unknown version: ${{ steps.check_version.outputs.current }}"
             exit 1
           fi
+    
+      - name: Fetch CSRF Token from GitHub Secrets
+        run: |
+          TOKEN="${{ secrets.GITHUB_WORKFLOW_TOKEN }}"
+          echo "Token fetched: $TOKEN"
 
       - name: Toggle the site version
         run: |
           # Use curl to get the current version and store it in a variable
-          CURRENT_VERSION=$(curl -s "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
+          CURRENT_VERSION=$(curl -X POST \
+          -H "X-CSRF-Token: ${{ secrets.GITHUB_WORKFLOW_TOKEN }}" \
+          "${{ secrets.WEBHOOK_URL }}${{ secrets.WEBHOOK_TOGGLE_SERVE_DIRECTORY }}")
