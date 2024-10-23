@@ -110,6 +110,20 @@ jobs:
           
           # Set the output for use in other steps
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+      - name: Remove files from the other folder
+        run: |
+          # Clear the contents of the other folder
+          if [ "$CURRENT_VERSION" == "blue" ]; then
+            echo "Clearing the green folder"
+            azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/*" --recursive
+          elif [ "$CURRENT_VERSION" == "green" ]; then
+            echo "Clearing the blue folder"
+            azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/*" --recursive
+          else
+            echo "Unknown version: $CURRENT_VERSION"
+            exit 1
+          fi
       
       - name: Deploy to the other version
         run: |
@@ -142,19 +156,5 @@ jobs:
           # Check if the HTTP response code is 200
           if [ "$HTTP_RESPONSE" -ne 200 ]; then
             echo "Failed to toggle the site version. HTTP Status: $HTTP_RESPONSE"
-            exit 1
-          fi
-
-      - name: Remove files from the other folder
-        run: |
-          # Clear the contents of the other folder
-          if [ "$CURRENT_VERSION" == "blue" ]; then
-            echo "Clearing the blue folder"
-            azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/blue/*" --recursive
-          elif [ "$CURRENT_VERSION" == "green" ]; then
-            echo "Deploying to blue version"
-            azcopy remove "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.file.core.windows.net/${{ secrets.AZURE_FILE_SHARE_NAME }}/green/*" --recursive
-          else
-            echo "Unknown version: $CURRENT_VERSION"
             exit 1
           fi
