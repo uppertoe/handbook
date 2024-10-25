@@ -41,9 +41,10 @@
   pageRef = "hospitals/peter-mac"
   weight = 20
 
-#[[main]]
-#  name = "Parent"
-#  weight = 20
+[[main]]
+  name = "Log Out"
+  url = "/logout"
+  weight = 50
 
 #[[main]]
 #  name = "example sub-menu 1"
